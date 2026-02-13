@@ -1,0 +1,361 @@
+import React from 'react';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Image,
+  Dimensions,
+} from 'react-native';
+import { useAuth } from '@/hooks/useAuth';
+
+const HomeScreen = ({ navigation }: any) => {
+  const { user, activeRole } = useAuth();
+  const screenWidth = Dimensions.get('window').width;
+
+  const getDashboardTabName = () => {
+    switch (activeRole) {
+      case 'tenant': return 'TenantHome';
+      case 'landlord': return 'LandlordHome';
+      case 'builder': return 'BuilderHome';
+      case 'specialist': return 'SpecialistHome';
+      case 'employee': return 'EmployeeHome';
+      default: return 'Home';
+    }
+  };
+
+  const quickAccessItems = [
+    {
+      id: 'properties',
+      title: 'Properties',
+      icon: '🏠',
+      roles: ['landlord', 'tenant'],
+      action: () => navigation.navigate(getDashboardTabName()),
+    },
+    {
+      id: 'projects',
+      title: 'Projects',
+      icon: '📋',
+      roles: ['builder', 'employee'],
+      action: () => navigation.navigate(getDashboardTabName()),
+    },
+    {
+      id: 'messaging',
+      title: 'Messages',
+      icon: '💬',
+      roles: ['tenant', 'landlord', 'builder', 'specialist', 'employee'],
+      action: () => navigation.navigate('Messaging'),
+    },
+    {
+      id: 'specialists',
+      title: 'Find Specialists',
+      icon: '🔧',
+      roles: ['tenant', 'landlord', 'builder', 'employee'],
+      action: () => navigation.navigate('SpecialistDirectory'),
+    },
+    {
+      id: 'profile',
+      title: 'Profile Settings',
+      icon: '⚙️',
+      roles: ['tenant', 'landlord', 'builder', 'specialist', 'employee'],
+      action: () => navigation.navigate('ProfileSettings'),
+    },
+  ];
+
+  const availableItems = quickAccessItems.filter((item) =>
+    item.roles.includes(activeRole || '')
+  );
+
+  const getRoleGreeting = () => {
+    switch (activeRole) {
+      case 'tenant':
+        return 'Tenant Dashboard';
+      case 'landlord':
+        return 'Landlord Dashboard';
+      case 'builder':
+        return 'Builder Dashboard';
+      case 'specialist':
+        return 'Specialist Dashboard';
+      case 'employee':
+        return 'Employee Dashboard';
+      default:
+        return 'Dashboard';
+    }
+  };
+
+  const getRoleDescription = () => {
+    switch (activeRole) {
+      case 'tenant':
+        return 'Browse properties, report issues, and connect with landlords';
+      case 'landlord':
+        return 'Manage your properties, track tenants, and handle maintenance';
+      case 'builder':
+        return 'Track your construction projects and manage teams';
+      case 'specialist':
+        return 'View job opportunities and connect with clients';
+      case 'employee':
+        return 'Manage assigned tasks and collaborate with teams';
+      default:
+        return 'Welcome to Naya app';
+    }
+  };
+
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Welcome Section */}
+      <View style={styles.welcomeSection}>
+        <Text style={styles.greeting}>{getRoleGreeting()}</Text>
+        <Text style={styles.userName}>{user?.user_metadata?.full_name || 'User'}</Text>
+        <Text style={styles.description}>{getRoleDescription()}</Text>
+      </View>
+
+      {/* Quick Stats */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Account Status</Text>
+          <Text style={styles.statValue}>Active</Text>
+          <Text style={styles.statSmall}>✓ Verified</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Current Role</Text>
+          <Text style={styles.statValue}>{activeRole?.toUpperCase()}</Text>
+          <Text style={styles.statSmall}>Switch in Settings</Text>
+        </View>
+      </View>
+
+      {/* Quick Access */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Quick Access</Text>
+        <View style={styles.gridContainer}>
+          {availableItems.map((item, index) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.quickAccessCard,
+                index % 2 === 0 ? styles.cardLeft : styles.cardRight,
+              ]}
+              onPress={item.action}
+            >
+              <Text style={styles.quickAccessIcon}>{item.icon}</Text>
+              <Text style={styles.quickAccessTitle}>{item.title}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Recent Activity */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recent Activity</Text>
+        <View style={styles.activityContainer}>
+          <View style={styles.activityItem}>
+            <View style={styles.activityDot} />
+            <View style={styles.activityContent}>
+              <Text style={styles.activityTitle}>Welcome to Naya</Text>
+              <Text style={styles.activityTime}>Just now</Text>
+            </View>
+          </View>
+          <View style={styles.activityItem}>
+            <View style={styles.activityDot} />
+            <View style={styles.activityContent}>
+              <Text style={styles.activityTitle}>Set up complete</Text>
+              <Text style={styles.activityTime}>Today</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {/* Features Highlight */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Key Features</Text>
+        <View style={styles.featuresList}>
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>•</Text>
+            <Text style={styles.featureText}>Real-time messaging with professionals</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>•</Text>
+            <Text style={styles.featureText}>Browse and hire verified specialists</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>•</Text>
+            <Text style={styles.featureText}>Track projects and maintenance requests</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <Text style={styles.featureBullet}>•</Text>
+            <Text style={styles.featureText}>Manage properties and subscriptions</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Footer Spacing */}
+      <View style={styles.footer} />
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  welcomeSection: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 20,
+    backgroundColor: '#f5f5f5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  greeting: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 4,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#007AFF',
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 4,
+  },
+  statSmall: {
+    fontSize: 11,
+    color: '#28A745',
+  },
+  section: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 12,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  quickAccessCard: {
+    flex: 1,
+    backgroundColor: '#f0f8ff',
+    borderRadius: 12,
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 120,
+    borderWidth: 1,
+    borderColor: '#d0e8ff',
+  },
+  cardLeft: {
+    marginRight: 6,
+  },
+  cardRight: {
+    marginLeft: 6,
+  },
+  quickAccessIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  quickAccessTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007AFF',
+    textAlign: 'center',
+  },
+  activityContainer: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+  },
+  activityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#007AFF',
+    marginRight: 12,
+    marginTop: 6,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityTitle: {
+    fontSize: 14,
+    color: '#000',
+    fontWeight: '500',
+  },
+  activityTime: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  featuresList: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  featureBullet: {
+    fontSize: 14,
+    color: '#007AFF',
+    marginRight: 12,
+    fontWeight: '600',
+  },
+  featureText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#555',
+    lineHeight: 18,
+  },
+  footer: {
+    height: 20,
+  },
+});
+
+export default HomeScreen;
