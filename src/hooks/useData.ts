@@ -536,6 +536,28 @@ export const useUpdateUnit = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['property-units', data.property_id] });
       queryClient.invalidateQueries({ queryKey: ['property', data.property_id] });
+      queryClient.invalidateQueries({ queryKey: ['units', data.property_id] });
+    },
+  });
+};
+
+export const useDeleteUnit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ unitId, propertyId }: { unitId: string; propertyId: string }) => {
+      const { error } = await supabase
+        .from('units')
+        .delete()
+        .eq('id', unitId);
+
+      if (error) throw error;
+      return { propertyId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['property-units', data.propertyId] });
+      queryClient.invalidateQueries({ queryKey: ['property', data.propertyId] });
+      queryClient.invalidateQueries({ queryKey: ['units', data.propertyId] });
     },
   });
 };
