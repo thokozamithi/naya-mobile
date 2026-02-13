@@ -15,6 +15,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
 import { useUpdateProperty } from '@/hooks/useData';
 import { Property } from '@/types';
+import SuccessModal from '@/components/SuccessModal';
 
 const PROPERTY_TYPES = [
   { value: 'apartment', label: 'Apartment' },
@@ -44,6 +45,8 @@ export default function EditPropertyScreen() {
   const [totalUnits, setTotalUnits] = useState('1');
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [updatedPropertyName, setUpdatedPropertyName] = useState('');
 
   // Pre-populate form with existing property data
   useEffect(() => {
@@ -102,16 +105,17 @@ export default function EditPropertyScreen() {
         description: description.trim() || null,
       });
 
-      Alert.alert('Success', 'Property updated successfully!', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      setUpdatedPropertyName(name.trim());
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Error updating property:', error);
       Alert.alert('Error', error.message || 'Failed to update property');
     }
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    navigation.goBack();
   };
 
   return (
@@ -255,6 +259,14 @@ export default function EditPropertyScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Property Updated!"
+        message={`${updatedPropertyName} has been updated successfully.`}
+        onClose={handleSuccessModalClose}
+        icon="🏠"
+      />
     </KeyboardAvoidingView>
   );
 }

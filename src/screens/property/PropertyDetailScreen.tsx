@@ -11,7 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { usePropertyDetail } from '@/hooks/useData';
+import { usePropertyDetail, useDeleteProperty } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import QRCode from 'react-native-qrcode-svg';
@@ -29,6 +29,7 @@ export default function PropertyDetailScreen() {
   const [showQRModal, setShowQRModal] = useState(false);
 
   const { property, units, isLoading, error } = usePropertyDetail(propertyId);
+  const deleteProperty = useDeleteProperty();
 
   if (!propertyId) {
     return (
@@ -63,6 +64,37 @@ export default function PropertyDetailScreen() {
 
   const handleEditProperty = () => {
     navigation.navigate('EditProperty', { property });
+  };
+
+  const handleDeleteProperty = () => {
+    Alert.alert(
+      'Delete Property',
+      `Are you sure you want to delete "${property.name}"? This action cannot be undone and will delete all units and associated data.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteProperty.mutateAsync(propertyId);
+              Alert.alert('Success', 'Property deleted successfully');
+              if (activeRole === 'landlord') {
+                navigation.navigate('LandlordHome', { activeTab: 'properties' } as any);
+              } else {
+                navigation.goBack();
+              }
+            } catch (error: any) {
+              console.error('Error deleting property:', error);
+              Alert.alert('Error', error.message || 'Failed to delete property');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleRequestMaintenance = () => {
@@ -241,6 +273,17 @@ export default function PropertyDetailScreen() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondaryButton} onPress={handleRequestMaintenance}>
                 <Text style={styles.secondaryButtonText}>Request Maintenance</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={handleDeleteProperty}
+                disabled={deleteProperty.isPending}
+              >
+                {deleteProperty.isPending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.deleteButtonText}>Delete Property</Text>
+                )}
               </TouchableOpacity>
             </>
           )}
@@ -553,6 +596,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#0066cc',
+  },
+  deleteButton: {
+    backgroundColor: '#FF3B30',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   modalOverlay: {
     flex: 1,

@@ -21,6 +21,7 @@ import AddPropertyScreen from '@/screens/property/AddPropertyScreen';
 import AddUnitScreen from '@/screens/property/AddUnitScreen';
 import UnitsManagementScreen from '@/screens/property/UnitsManagementScreen';
 import EditPropertyScreen from '@/screens/property/EditPropertyScreen';
+import EditUnitScreen from '@/screens/property/EditUnitScreen';
 import PropertyPaymentsScreen from '@/screens/property/PropertyPaymentsScreen';
 import ProjectDetailScreen from '@/screens/project/ProjectDetailScreen';
 import MessagingScreen from '@/screens/messaging/MessagingScreen';
@@ -155,6 +156,7 @@ const LandlordTabs = () => (
     <Stack.Screen name="AddUnit" component={AddUnitScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="UnitsManagement" component={UnitsManagementScreen} options={{ headerShown: false }} />
     <Stack.Screen name="EditProperty" component={EditPropertyScreen} options={{ headerShown: false, presentation: 'modal' }} />
+    <Stack.Screen name="EditUnit" component={EditUnitScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
     <Stack.Screen name="CreateMaintenanceRequest" component={CreateMaintenanceRequestScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="MaintenanceRequestDetail" component={MaintenanceRequestDetailScreen} options={{ headerShown: true, title: 'Maintenance Request' }} />

@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { useUnits } from '@/hooks/useData';
+import { useUnits, useDeleteUnit } from '@/hooks/useData';
 
 interface RouteParams {
   propertyId: string;
@@ -22,6 +22,7 @@ export default function UnitsManagementScreen() {
   const { propertyId, propertyName } = (route.params as RouteParams) || {};
 
   const { data: units = [], isLoading, refetch } = useUnits(propertyId);
+  const deleteUnit = useDeleteUnit();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async () => {
@@ -66,6 +67,37 @@ export default function UnitsManagementScreen() {
 
   const handleEditUnit = (unit: any) => {
     navigation.navigate('EditUnit', { unit, propertyId, propertyName });
+  };
+
+  const handleDeleteUnit = (unit: any, e?: any) => {
+    if (e) {
+      e.stopPropagation();
+    }
+
+    Alert.alert(
+      'Delete Unit',
+      `Are you sure you want to delete "${unit.unit_name}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteUnit.mutateAsync({ unitId: unit.id, propertyId });
+              Alert.alert('Success', 'Unit deleted successfully');
+              refetch();
+            } catch (error: any) {
+              console.error('Error deleting unit:', error);
+              Alert.alert('Error', error.message || 'Failed to delete unit');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const vacantUnits = units.filter((u: any) => u.status === 'vacant');
@@ -146,20 +178,28 @@ export default function UnitsManagementScreen() {
                     <Text style={styles.unitName}>{unit.unit_name}</Text>
                     <Text style={styles.unitCode}>Code: {unit.unit_code}</Text>
                   </View>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusColor(unit.status) + '22' },
-                    ]}
-                  >
-                    <Text
+                  <View style={styles.unitActions}>
+                    <View
                       style={[
-                        styles.statusText,
-                        { color: getStatusColor(unit.status) },
+                        styles.statusBadge,
+                        { backgroundColor: getStatusColor(unit.status) + '22' },
                       ]}
                     >
-                      {getStatusIcon(unit.status)} {unit.status}
-                    </Text>
+                      <Text
+                        style={[
+                          styles.statusText,
+                          { color: getStatusColor(unit.status) },
+                        ]}
+                      >
+                        {getStatusIcon(unit.status)} {unit.status}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.deleteIconButton}
+                      onPress={(e) => handleDeleteUnit(unit, e)}
+                    >
+                      <Text style={styles.deleteIcon}>🗑️</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
 
@@ -339,6 +379,17 @@ const styles = StyleSheet.create({
   },
   unitLeft: {
     flex: 1,
+  },
+  unitActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  deleteIconButton: {
+    padding: 4,
+  },
+  deleteIcon: {
+    fontSize: 18,
   },
   unitName: {
     fontSize: 18,
