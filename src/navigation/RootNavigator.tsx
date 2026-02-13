@@ -32,6 +32,7 @@ import UpgradeScreen from '@/screens/subscription/UpgradeScreen';
 import JoinPropertyScreen from '@/screens/tenant/JoinPropertyScreen';
 import PayRentScreen from '@/screens/tenant/PayRentScreen';
 import PaymentHistoryScreen from '@/screens/tenant/PaymentHistoryScreen';
+import PaymentReceiptScreen from '@/screens/payment/PaymentReceiptScreen';
 import HomeScreen from '@/screens/home/HomeScreen';
 
 const Stack = createNativeStackNavigator();
@@ -108,6 +109,7 @@ const TenantTabs = () => (
     <Stack.Screen name="JoinProperty" component={JoinPropertyScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="PayRent" component={PayRentScreen} options={{ headerShown: false }} />
     <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="PaymentReceipt" component={PaymentReceiptScreen} options={{ headerShown: false }} />
     <Stack.Screen name="Upgrade" component={UpgradeScreen} options={{ headerShown: true, title: 'Upgrade' }} />
   </Stack.Navigator>
 );
@@ -147,6 +149,7 @@ const LandlordTabs = () => (
     <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ headerShown: true }} />
     <Stack.Screen name="PropertyPayments" component={PropertyPaymentsScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="PaymentReceipt" component={PaymentReceiptScreen} options={{ headerShown: false }} />
     <Stack.Screen name="AddProperty" component={AddPropertyScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="AddUnit" component={AddUnitScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="EditProperty" component={EditPropertyScreen} options={{ headerShown: false, presentation: 'modal' }} />

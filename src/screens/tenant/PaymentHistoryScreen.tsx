@@ -9,12 +9,13 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
-import { usePayments } from '@/hooks/useData';
+import { usePayments, useTenantProperty } from '@/hooks/useData';
 
 export default function PaymentHistoryScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { data: payments = [], isLoading, refetch } = usePayments();
+  const { property: tenantProperty, unit } = useTenantProperty();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = React.useCallback(async () => {
@@ -202,7 +203,18 @@ export default function PaymentHistoryScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Completed Payments</Text>
             {completedPayments.map((payment: any) => (
-              <View key={payment.id} style={styles.paymentCard}>
+              <TouchableOpacity
+                key={payment.id}
+                style={styles.paymentCard}
+                onPress={() =>
+                  navigation.navigate('PaymentReceipt', {
+                    payment,
+                    propertyName: tenantProperty?.name,
+                    unitName: unit?.unit_name,
+                  })
+                }
+                activeOpacity={0.7}
+              >
                 <View style={styles.paymentRow}>
                   <View style={styles.paymentLeft}>
                     <Text style={styles.paymentIcon}>
@@ -235,12 +247,13 @@ export default function PaymentHistoryScreen() {
                     <Text style={styles.paymentDate}>
                       {formatDate(payment.paid_date || payment.created_at)}
                     </Text>
+                    <Text style={styles.viewReceiptHint}>📄 Tap for receipt</Text>
                   </View>
                 </View>
                 {payment.notes && (
                   <Text style={styles.paymentNotes}>Note: {payment.notes}</Text>
                 )}
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -441,6 +454,12 @@ const styles = StyleSheet.create({
   paymentDate: {
     fontSize: 11,
     color: '#999',
+  },
+  viewReceiptHint: {
+    fontSize: 10,
+    color: '#007AFF',
+    marginTop: 4,
+    fontWeight: '600',
   },
   paymentNotes: {
     fontSize: 12,
