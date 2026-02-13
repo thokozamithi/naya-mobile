@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, A
 import { useAuth } from '@/hooks/useAuth';
 import { useProjects } from '@/hooks/useData';
 import { useUserProfile } from '@/hooks/useQueries';
+import { DashboardHeader } from '@/components/DashboardHeader';
 
 const BuilderDashboard = ({ navigation }: any) => {
-  const { user } = useAuth();
+  const { user, signOut, activeRole } = useAuth();
   const { projects = [], isLoading } = useProjects();
   const { profile } = useUserProfile();
   const [refreshing, setRefreshing] = useState(false);
@@ -18,46 +19,83 @@ const BuilderDashboard = ({ navigation }: any) => {
   const activeProjects = projects.filter((p: any) => p.status === 'in-progress' || p.status === 'active');
   const completedProjects = projects.filter((p: any) => p.status === 'completed');
 
+  // Navigation handlers for header
+  const handleLogoPress = () => navigation.navigate('Home');
+  const handleRoleSwitch = () => navigation.navigate('RoleSelection');
+  const handleSignOut = () => { if (typeof signOut === 'function') { signOut(); } navigation.navigate('Home'); };
+
+  // Quick actions
+  const handleSpecialists = () => navigation.navigate('SpecialistDirectory');
+  const handleSettings = () => navigation.navigate('ProfileSettings');
+  const handleMessages = () => navigation.navigate('Messaging');
+
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF9500" />
-      }
-    >
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>Builder Dashboard</Text>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => Alert.alert('New Project', 'Project creation will be available soon.')}
-            >
-              <Text style={styles.headerButtonText}>+ New Project</Text>
+    <>
+      <DashboardHeader
+        onLogoPress={handleLogoPress}
+        onRoleSwitch={handleRoleSwitch}
+        onSignOut={handleSignOut}
+        userName={profile?.full_name || user?.email}
+        role={activeRole}
+      />
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF9500" />
+        }
+      >
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <Text style={styles.title}>Builder Dashboard</Text>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={() => Alert.alert('New Project', 'Project creation will be available soon.')}
+              >
+                <Text style={styles.headerButtonText}>+ New Project</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerButton}
+                onPress={handleSpecialists}
+              >
+                <Text style={styles.headerButtonText}>Specialists</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <Text style={styles.subtitle}>{profile?.full_name || user?.email}</Text>
+        </View>
+
+        <View style={styles.kpiRow}>
+          <View style={[styles.kpiCard, { borderLeftColor: '#FF9500' }]}>
+            <Text style={styles.kpiValue}>{isLoading ? '-' : activeProjects.length}</Text>
+            <Text style={styles.kpiLabel}>Active Projects</Text>
+          </View>
+          <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
+            <Text style={styles.kpiValue}>{isLoading ? '-' : completedProjects.length}</Text>
+            <Text style={styles.kpiLabel}>Completed</Text>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleMessages}>
+              <Text style={styles.actionIcon}>💬</Text>
+              <Text style={styles.actionLabel}>Messages</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => navigation.navigate('SpecialistDirectory')}
-            >
-              <Text style={styles.headerButtonText}>Specialists</Text>
+            <TouchableOpacity style={styles.actionButton} onPress={handleSpecialists}>
+              <Text style={styles.actionIcon}>🔍</Text>
+              <Text style={styles.actionLabel}>Specialists</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={handleSettings}>
+              <Text style={styles.actionIcon}>⚙️</Text>
+              <Text style={styles.actionLabel}>Settings</Text>
             </TouchableOpacity>
           </View>
         </View>
-        <Text style={styles.subtitle}>{profile?.full_name || user?.email}</Text>
-      </View>
 
-      <View style={styles.kpiRow}>
-        <View style={[styles.kpiCard, { borderLeftColor: '#FF9500' }]}>
-          <Text style={styles.kpiValue}>{isLoading ? '-' : activeProjects.length}</Text>
-          <Text style={styles.kpiLabel}>Active Projects</Text>
-        </View>
-        <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
-          <Text style={styles.kpiValue}>{isLoading ? '-' : completedProjects.length}</Text>
-          <Text style={styles.kpiLabel}>Completed</Text>
-        </View>
-      </View>
-
-      <View style={styles.kpiRow}>
+        {/* ...existing code... */
         <View style={[styles.kpiCard, { borderLeftColor: '#007AFF' }]}>
           <Text style={styles.kpiValue}>{isLoading ? '-' : projects.length}</Text>
           <Text style={styles.kpiLabel}>Total Projects</Text>

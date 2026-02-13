@@ -8,10 +8,31 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/hooks/useAuth';
 
 const HomeScreen = ({ navigation }: any) => {
-  const { user, activeRole } = useAuth();
+  const { user, activeRole, signOut } = useAuth();
+    // Header navigation handlers
+    const handleLogoPress = () => {
+      if (user) {
+        navigation.navigate('RoleSelection');
+      } else {
+        navigation.navigate('Home');
+      }
+    };
+    const handleSignIn = () => navigation.navigate('Login');
+    const handleGetStarted = () => navigation.navigate('Login');
+    const handleDashboard = () => {
+      const target = getDashboardTarget();
+      if (target) navigation.navigate(target);
+    };
+    const handleSettings = () => navigation.navigate('ProfileSettings');
+    const handleSignOut = () => {
+      signOut();
+      navigation.navigate('Home');
+    };
+    const handleRoleSwitch = () => navigation.navigate('RoleSelection');
   const screenWidth = Dimensions.get('window').width;
 
   const getDashboardTarget = () => {
@@ -120,7 +141,20 @@ const HomeScreen = ({ navigation }: any) => {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <>
+      <AppHeader
+        isLoggedIn={!!user}
+        onLogoPress={handleLogoPress}
+        onSignIn={handleSignIn}
+        onGetStarted={handleGetStarted}
+        onDashboard={handleDashboard}
+        onSettings={handleSettings}
+        onSignOut={handleSignOut}
+        onRoleSwitch={handleRoleSwitch}
+        activeRole={activeRole}
+        userName={user?.user_metadata?.full_name}
+      />
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Welcome Section */}
       <View style={styles.welcomeSection}>
         <Text style={styles.greeting}>{getRoleGreeting()}</Text>
@@ -208,11 +242,37 @@ const HomeScreen = ({ navigation }: any) => {
 
       {/* Footer Spacing */}
       <View style={styles.footer} />
+      {/* Floating Take a Tour button */}
+      <TouchableOpacity
+        style={styles.tourButton}
+        onPress={() => {
+          // TODO: Integrate driver.js or tour logic here
+          alert('Tour would start (driver.js integration pending)');
+        }}
+      >
+        <Text style={styles.tourButtonText}>Take a Tour</Text>
+      </TouchableOpacity>
     </ScrollView>
-  );
+    </>
 };
 
 const styles = StyleSheet.create({
+    tourButton: {
+      position: 'absolute',
+      bottom: 30,
+      right: 20,
+      backgroundColor: '#007AFF',
+      borderRadius: 24,
+      paddingVertical: 12,
+      paddingHorizontal: 22,
+      elevation: 4,
+      zIndex: 100,
+    },
+    tourButtonText: {
+      color: '#fff',
+      fontWeight: '700',
+      fontSize: 16,
+    },
   container: {
     flex: 1,
     backgroundColor: '#fff',

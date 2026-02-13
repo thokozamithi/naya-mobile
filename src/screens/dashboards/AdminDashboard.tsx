@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
+import { DashboardHeader } from '@/components/DashboardHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/services/supabase';
 
@@ -18,7 +19,7 @@ type Tab = 'pending' | 'subscriptions' | 'memberships' | 'analytics';
 
 export default function AdminDashboard() {
   const navigation = useNavigation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, activeRole } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('pending');
   const [refreshing, setRefreshing] = useState(false);
@@ -120,12 +121,10 @@ export default function AdminDashboard() {
     ]);
   };
 
-  const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
-    ]);
-  };
+  // Navigation handlers for header
+  const handleLogoPress = () => navigation.navigate('Home');
+  const handleRoleSwitch = () => navigation.navigate('RoleSelection');
+  const handleSignOut = () => { if (typeof signOut === 'function') { signOut(); } navigation.navigate('Home'); };
 
   if (adminLoading) {
     return (
@@ -135,39 +134,15 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!isAdmin) {
-    return (
-      <View style={[styles.container, styles.center]}>
-        <Text style={styles.errorText}>Access Denied</Text>
-        <Text style={styles.errorSubtext}>You do not have admin privileges.</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => signOut()}>
-          <Text style={styles.backButtonText}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'pending', label: `Pending (${pendingSubs.length})` },
-    { key: 'subscriptions', label: 'All Subs' },
-    { key: 'memberships', label: 'Members' },
-    { key: 'analytics', label: 'Analytics' },
-  ];
-
-  const activeSubs = allSubs.filter((s: any) => s.status === 'active');
-
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>Admin Dashboard</Text>
-          <TouchableOpacity onPress={handleSignOut}>
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
+      <DashboardHeader
+        onLogoPress={handleLogoPress}
+        onRoleSwitch={handleRoleSwitch}
+        onSignOut={handleSignOut}
+        userName={user?.email}
+        role={activeRole}
+      />
       {/* Stats */}
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
@@ -249,13 +224,34 @@ export default function AdminDashboard() {
                   <View style={[styles.statusBadge, {
                     backgroundColor: sub.status === 'active' ? '#d4edda' :
                       sub.status === 'pending' ? '#fff3cd' : '#f8d7da'
-                  }]}>
-                    <Text style={[styles.statusText, {
+                  }]}>\n+                    <Text style={[styles.statusText, {
                       color: sub.status === 'active' ? '#28a745' :
                         sub.status === 'pending' ? '#856404' : '#d32f2f'
                     }]}>{sub.status}</Text>
                   </View>
                 </View>
+                <Text style={styles.subMeta}>${sub.amount} - {sub.payment_method}</Text>
+              </View>
+            ))
+          )
+        )}
+
+        {activeTab === 'memberships' && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Membership management coming soon</Text>
+          </View>
+        )}
+
+        {activeTab === 'analytics' && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Analytics coming soon</Text>
+          </View>
+        )}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </View>
+  );
                 <Text style={styles.subMeta}>${sub.amount} - {sub.payment_method}</Text>
               </View>
             ))

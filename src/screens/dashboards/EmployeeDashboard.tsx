@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } 
 import { useAuth } from '@/hooks/useAuth';
 import { useProjects, useMaintenanceRequests } from '@/hooks/useData';
 import { useUserProfile } from '@/hooks/useQueries';
+import { DashboardHeader } from '@/components/DashboardHeader';
 
 const EmployeeDashboard = ({ navigation }: any) => {
-  const { user } = useAuth();
+  const { user, signOut, activeRole } = useAuth();
   const { projects = [], isLoading: projLoading } = useProjects();
   const { data: requests = [], isLoading: reqLoading } = useMaintenanceRequests(user?.id);
   const { profile } = useUserProfile();
@@ -19,82 +20,96 @@ const EmployeeDashboard = ({ navigation }: any) => {
   const pendingTasks = requests.filter((r: any) => r.status === 'assigned' || r.status === 'in-progress');
   const isLoading = projLoading || reqLoading;
 
+  // Navigation handlers for header
+  const handleLogoPress = () => navigation.navigate('Home');
+  const handleRoleSwitch = () => navigation.navigate('RoleSelection');
+  const handleSignOut = () => { if (typeof signOut === 'function') { signOut(); } navigation.navigate('Home'); };
+
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#5AC8FA" />
-      }
-    >
-      <View style={styles.header}>
-        <Text style={styles.title}>Employee Dashboard</Text>
-        <Text style={styles.subtitle}>{profile?.full_name || user?.email}</Text>
-      </View>
-
-      <View style={styles.kpiRow}>
-        <View style={[styles.kpiCard, { borderLeftColor: '#5AC8FA' }]}>
-          <Text style={styles.kpiValue}>{isLoading ? '-' : pendingTasks.length}</Text>
-          <Text style={styles.kpiLabel}>Assigned Tasks</Text>
+    <>
+      <DashboardHeader
+        onLogoPress={handleLogoPress}
+        onRoleSwitch={handleRoleSwitch}
+        onSignOut={handleSignOut}
+        userName={profile?.full_name || user?.email}
+        role={activeRole}
+      />
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#5AC8FA" />
+        }
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Employee Dashboard</Text>
+          <Text style={styles.subtitle}>{profile?.full_name || user?.email}</Text>
         </View>
-        <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
-          <Text style={styles.kpiValue}>{isLoading ? '-' : projects.length}</Text>
-          <Text style={styles.kpiLabel}>Projects</Text>
-        </View>
-      </View>
 
-      {/* Tasks */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Tasks</Text>
-        {isLoading ? (
-          [1, 2].map((i) => (
-            <View key={i} style={styles.skeletonCard}>
-              <View style={[styles.skeletonLine, { width: '60%', height: 14 }]} />
-              <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
-            </View>
-          ))
-        ) : pendingTasks.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyText}>No assigned tasks</Text>
-            <Text style={styles.emptySubtext}>Tasks assigned to you will appear here</Text>
+        <View style={styles.kpiRow}>
+          <View style={[styles.kpiCard, { borderLeftColor: '#5AC8FA' }]}>
+            <Text style={styles.kpiValue}>{isLoading ? '-' : pendingTasks.length}</Text>
+            <Text style={styles.kpiLabel}>Assigned Tasks</Text>
           </View>
-        ) : (
-          pendingTasks.slice(0, 5).map((task: any) => (
-            <View key={task.id} style={styles.taskCard}>
-              <View style={[styles.priorityDot, {
-                backgroundColor: task.priority === 'high' ? '#FF3B30' :
-                  task.priority === 'medium' ? '#FF9500' : '#34C759'
-              }]} />
-              <View style={styles.taskContent}>
-                <Text style={styles.taskTitle}>{task.title}</Text>
-                <Text style={styles.taskMeta}>{task.status} - {task.priority} priority</Text>
-              </View>
-            </View>
-          ))
-        )}
-      </View>
-
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Messaging')}>
-            <Text style={styles.actionIcon}>💬</Text>
-            <Text style={styles.actionLabel}>Messages</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('SpecialistDirectory')}>
-            <Text style={styles.actionIcon}>🔍</Text>
-            <Text style={styles.actionLabel}>Specialists</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProfileSettings')}>
-            <Text style={styles.actionIcon}>⚙️</Text>
-            <Text style={styles.actionLabel}>Settings</Text>
-          </TouchableOpacity>
+          <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
+            <Text style={styles.kpiValue}>{isLoading ? '-' : projects.length}</Text>
+            <Text style={styles.kpiLabel}>Projects</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={{ height: 20 }} />
-    </ScrollView>
+        {/* Tasks */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Tasks</Text>
+          {isLoading ? (
+            [1, 2].map((i) => (
+              <View key={i} style={styles.skeletonCard}>
+                <View style={[styles.skeletonLine, { width: '60%', height: 14 }]} />
+                <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
+              </View>
+            ))
+          ) : pendingTasks.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyIcon}>📋</Text>
+              <Text style={styles.emptyText}>No assigned tasks</Text>
+              <Text style={styles.emptySubtext}>Tasks assigned to you will appear here</Text>
+            </View>
+          ) : (
+            pendingTasks.slice(0, 5).map((task: any) => (
+              <View key={task.id} style={styles.taskCard}>
+                <View style={[styles.priorityDot, {
+                  backgroundColor: task.priority === 'high' ? '#FF3B30' :
+                    task.priority === 'medium' ? '#FF9500' : '#34C759'
+                }]} />
+                <View style={styles.taskContent}>
+                  <Text style={styles.taskTitle}>{task.title}</Text>
+                  <Text style={styles.taskMeta}>{task.status} - {task.priority} priority</Text>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Messaging')}>
+              <Text style={styles.actionIcon}>💬</Text>
+              <Text style={styles.actionLabel}>Messages</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('SpecialistDirectory')}>
+              <Text style={styles.actionIcon}>🔍</Text>
+              <Text style={styles.actionLabel}>Specialists</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProfileSettings')}>
+              <Text style={styles.actionIcon}>⚙️</Text>
+              <Text style={styles.actionLabel}>Settings</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={{ height: 20 }} />
+      </ScrollView>
+    </>
   );
 };
 

@@ -41,6 +41,15 @@ const RegisterScreen = ({ navigation }: any) => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.content}>
+        <View style={styles.logoRow}><Text style={styles.logo}>N</Text></View>
+        <View style={styles.tabRow}>
+          <TouchableOpacity style={styles.tabButton} onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.tabText}>Sign In</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled>
+            <Text style={styles.tabTextActive}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.title}>Create Account</Text>
         <Text style={styles.subtitle}>Join Naya Central</Text>
 
@@ -98,6 +107,42 @@ const RegisterScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
+    logoRow: {
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    logo: {
+      fontSize: 40,
+      fontWeight: 'bold',
+      color: '#007AFF',
+      marginBottom: 2,
+    },
+    tabRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginBottom: 18,
+      gap: 8,
+    },
+    tabButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 24,
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+      backgroundColor: 'transparent',
+    },
+    tabActive: {
+      borderBottomColor: '#007AFF',
+    },
+    tabText: {
+      color: '#007AFF',
+      fontWeight: '600',
+      fontSize: 16,
+    },
+    tabTextActive: {
+      color: '#007AFF',
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
   container: {
     flex: 1,
     backgroundColor: '#fff',

@@ -47,48 +47,85 @@ const RoleSelectionScreen = ({ navigation }: any) => {
 
   const isExistingRole = (roleId: string) => userRoles.includes(roleId as any);
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Select Your Role</Text>
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
-      </View>
-
-      {userRoles.length > 0 && (
-        <Text style={styles.sectionLabel}>Your Roles</Text>
-      )}
-
-      <FlatList
-        data={allRoles}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          const existing = isExistingRole(item.id);
-          return (
-            <TouchableOpacity
-              style={[styles.roleButton, existing && styles.roleButtonExisting]}
-              onPress={() => handleRoleSelect(item.id)}
-              disabled={loading}
-            >
-              <Text style={styles.roleIcon}>{item.icon}</Text>
-              <View style={styles.roleInfo}>
-                <Text style={styles.roleText}>{item.label}</Text>
-                <Text style={styles.roleDescription}>{item.description}</Text>
-              </View>
-              <Text style={[styles.roleAction, existing && styles.roleActionExisting]}>
-                {existing ? 'Switch' : 'Create'}
-              </Text>
+    return (
+      <View style={styles.container}>
+        <View style={styles.topHeader}>
+          <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+            <Text style={styles.logo}>N</Text>
+          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('ProfileSettings')}>
+              <Text style={styles.headerBtnText}>Settings</Text>
             </TouchableOpacity>
-          );
-        }}
-        contentContainerStyle={styles.list}
-      />
-    </View>
-  );
+            <TouchableOpacity style={styles.headerBtn} onPress={() => Alert.alert('Create Role', 'Role creation dialog placeholder.') }>
+              <Text style={styles.headerBtnText}>Create Role</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerBtn} onPress={handleSignOut}>
+              <Text style={[styles.headerBtnText, { color: '#FF3B30' }]}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <Text style={styles.title}>Select Your Role</Text>
+        {userRoles.length > 0 && (
+          <Text style={styles.sectionLabel}>Your Roles</Text>
+        )}
+        <FlatList
+          data={allRoles}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => {
+            const existing = isExistingRole(item.id);
+            return (
+              <TouchableOpacity
+                style={[styles.roleButton, existing && styles.roleButtonExisting]}
+                onPress={() => handleRoleSelect(item.id)}
+                disabled={loading}
+              >
+                <Text style={styles.roleIcon}>{item.icon}</Text>
+                <View style={styles.roleInfo}>
+                  <Text style={styles.roleText}>{item.label}</Text>
+                  <Text style={styles.roleDescription}>{item.description}</Text>
+                </View>
+                <Text style={[styles.roleAction, existing && styles.roleActionExisting]}>
+                  {existing ? 'Switch' : 'Create'}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+          contentContainerStyle={styles.list}
+        />
+      </View>
+    );
 };
 
 const styles = StyleSheet.create({
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 40,
+    marginBottom: 10,
+  },
+  logo: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginLeft: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerBtn: {
+    marginHorizontal: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  headerBtnText: {
+    fontSize: 15,
+    color: '#007AFF',
+    fontWeight: '600',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',

@@ -1,10 +1,18 @@
 import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { useState as useReactState } from 'react';
+import { DashboardHeader } from '@/components/DashboardHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useProperties, useMaintenanceRequests } from '@/hooks/useData';
 import { useUserProfile } from '@/hooks/useQueries';
 
+const TABS = [
+  'Overview', 'Properties', 'Tenants', 'Employees', 'Salaries', 'Payments', 'Maintenance', 'Specialists', 'Messages', 'Reports'
+];
+
 const LandlordDashboard = ({ navigation }: any) => {
+    const { signOut, activeRole } = useAuth();
+    const [activeTab, setActiveTab] = useReactState('Overview');
   const { user } = useAuth();
   const { properties = [], isLoading: propsLoading } = useProperties();
   const { data: requests = [], isLoading: reqLoading } = useMaintenanceRequests(user?.id);
@@ -23,26 +31,46 @@ const LandlordDashboard = ({ navigation }: any) => {
   const isLoading = propsLoading || reqLoading;
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#34C759" />
-      }
-    >
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>Landlord Dashboard</Text>
+    <>
+      <DashboardHeader
+        onLogoPress={() => navigation.navigate('Home')}
+        onRoleSwitch={() => navigation.navigate('RoleSelection')}
+        onSignOut={() => { if (typeof signOut === 'function') { signOut(); } navigation.navigate('Home'); }}
+        userName={profile?.full_name || user?.email}
+        role={activeRole}
+      />
+      {/* Tab triggers */}
+      <View style={styles.tabBar}>
+        {TABS.map(tab => (
           <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => navigation.navigate('SpecialistDirectory')}
+            key={tab}
+            style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+            onPress={() => setActiveTab(tab)}
           >
-            <Text style={styles.headerButtonText}>Find Specialists</Text>
+            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
           </TouchableOpacity>
-        </View>
-        <Text style={styles.subtitle}>
-          {profile?.full_name || user?.email}
-        </Text>
+        ))}
       </View>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#34C759" />
+        }
+      >
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <Text style={styles.title}>Landlord Dashboard</Text>
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={() => navigation.navigate('SpecialistDirectory')}
+            >
+              <Text style={styles.headerButtonText}>Find Specialists</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.subtitle}>
+            {profile?.full_name || user?.email}
+          </Text>
+        </View>
 
       {/* KPI Cards */}
       <View style={styles.kpiRow}>
@@ -183,6 +211,34 @@ const LandlordDashboard = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#f5f5f5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  tabBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: 'transparent',
+  },
+  tabBtnActive: {
+    backgroundColor: '#007AFF22',
+  },
+  tabText: {
+    color: '#007AFF',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  tabTextActive: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: { backgroundColor: '#34C759', padding: 20, paddingTop: 16 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

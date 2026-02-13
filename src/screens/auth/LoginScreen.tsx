@@ -49,6 +49,15 @@ const LoginScreen = ({ navigation }: any) => {
     return (
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.content}>
+          <View style={styles.logoRow}><Text style={styles.logo}>N</Text></View>
+          <View style={styles.tabRow}>
+            <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled>
+              <Text style={styles.tabTextActive}>Sign In</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.tabButton} onPress={() => { setForgotMode(false); navigation.navigate('Register'); }}>
+              <Text style={styles.tabText}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.title}>Reset Password</Text>
           <Text style={styles.subtitle}>
             {resetSent
@@ -94,7 +103,15 @@ const LoginScreen = ({ navigation }: any) => {
         <TouchableOpacity onPress={() => navigation.navigate('Landing')}>
           <Text style={styles.backLink}>← Back to Home</Text>
         </TouchableOpacity>
-
+        <View style={styles.logoRow}><Text style={styles.logo}>N</Text></View>
+        <View style={styles.tabRow}>
+          <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled>
+            <Text style={styles.tabTextActive}>Sign In</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabButton} onPress={() => navigation.navigate('Register')}>
+            <Text style={styles.tabText}>Sign Up</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.title}>Naya Central</Text>
         <Text style={styles.subtitle}>Welcome Back</Text>
 
@@ -138,6 +155,42 @@ const LoginScreen = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
+    logoRow: {
+      alignItems: 'center',
+      marginBottom: 10,
+    },
+    logo: {
+      fontSize: 40,
+      fontWeight: 'bold',
+      color: '#007AFF',
+      marginBottom: 2,
+    },
+    tabRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginBottom: 18,
+      gap: 8,
+    },
+    tabButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 24,
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
+      backgroundColor: 'transparent',
+    },
+    tabActive: {
+      borderBottomColor: '#007AFF',
+    },
+    tabText: {
+      color: '#007AFF',
+      fontWeight: '600',
+      fontSize: 16,
+    },
+    tabTextActive: {
+      color: '#007AFF',
+      fontWeight: 'bold',
+      fontSize: 16,
+    },
   container: {
     flex: 1,
     backgroundColor: '#fff',

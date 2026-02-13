@@ -1,11 +1,17 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useState as useReactState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { DashboardHeader } from '@/components/DashboardHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { useMaintenanceRequests, usePropertyRequests } from '@/hooks/useData';
 import { useMembership, useSubscription, useUserProfile } from '@/hooks/useQueries';
 
+const TABS = [
+  'Overview', 'Payments', 'Maintenance', 'Messages', 'Lease', 'Settings', 'Help'
+];
+
 const TenantDashboard = ({ navigation }: any) => {
-  const { user } = useAuth();
+  const { user, signOut, activeRole } = useAuth();
+    const [activeTab, setActiveTab] = useReactState('Overview');
   const { membership, isLoading: membershipLoading } = useMembership();
   const { subscription, isLoading: subscriptionLoading } = useSubscription();
   const { profile } = useUserProfile();
@@ -21,16 +27,36 @@ const TenantDashboard = ({ navigation }: any) => {
   const isLoading = membershipLoading || subscriptionLoading || reqLoading;
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#007AFF" />
-      }
-    >
-      <View style={styles.header}>
-        <Text style={styles.title}>Tenant Dashboard</Text>
-        <Text style={styles.subtitle}>{profile?.full_name || user?.email}</Text>
+    <>
+      <DashboardHeader
+        onLogoPress={() => navigation.navigate('Home')}
+        onRoleSwitch={() => navigation.navigate('RoleSelection')}
+        onSignOut={() => { signOut(); navigation.navigate('Home'); }}
+        userName={profile?.full_name || user?.email}
+        role={activeRole}
+      />
+      {/* Tab triggers */}
+      <View style={styles.tabBar}>
+        {TABS.map(tab => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+            onPress={() => setActiveTab(tab)}
+          >
+            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#007AFF" />
+        }
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Tenant Dashboard</Text>
+          <Text style={styles.subtitle}>{profile?.full_name || user?.email}</Text>
+        </View>
 
       {/* KPI Cards */}
       <View style={styles.kpiRow}>
@@ -117,13 +143,20 @@ const TenantDashboard = ({ navigation }: any) => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
+            onPress={() => Alert.alert('View Lease', 'Lease details coming soon.')}
+          >
+            <Text style={styles.actionIcon}>📄</Text>
+            <Text style={styles.actionLabel}>View Lease</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
             onPress={() => Alert.alert('Join Property', 'Enter a property code from your landlord to join a property.')}
           >
             <Text style={styles.actionIcon}>🏠</Text>
             <Text style={styles.actionLabel}>Join Property</Text>
           </TouchableOpacity>
         </View>
-        <View style={[styles.actionsGrid, { marginTop: 8 }]}>
+        <View style={[styles.actionsGrid, { marginTop: 8 }]}> 
           <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Messaging')}>
             <Text style={styles.actionIcon}>💬</Text>
             <Text style={styles.actionLabel}>Messages</Text>
@@ -145,6 +178,34 @@ const TenantDashboard = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#f5f5f5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  tabBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: 'transparent',
+  },
+  tabBtnActive: {
+    backgroundColor: '#007AFF22',
+  },
+  tabText: {
+    color: '#007AFF',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  tabTextActive: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: { backgroundColor: '#007AFF', padding: 20, paddingTop: 16 },
   title: { fontSize: 26, fontWeight: 'bold', color: '#fff' },
