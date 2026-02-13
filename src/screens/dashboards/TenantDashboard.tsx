@@ -2,11 +2,11 @@ import { useState, useCallback, useState as useReactState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { useAuth } from '@/hooks/useAuth';
-import { useMaintenanceRequests, usePropertyRequests } from '@/hooks/useData';
+import { useMaintenanceRequests, usePropertyRequests, useTenantProperty } from '@/hooks/useData';
 import { useMembership, useSubscription, useUserProfile } from '@/hooks/useQueries';
 
 const TABS = [
-  'Overview', 'Payments', 'Maintenance', 'Messages', 'Lease', 'Settings', 'Help'
+  'Overview', 'Maintenance', 'Messages'
 ];
 
 const TenantDashboard = ({ navigation }: any) => {
@@ -16,6 +16,7 @@ const TenantDashboard = ({ navigation }: any) => {
   const { subscription, isLoading: subscriptionLoading } = useSubscription();
   const { profile } = useUserProfile();
   const { data: requests = [], isLoading: reqLoading } = useMaintenanceRequests(user?.id);
+  const { property: tenantProperty, unit: tenantUnit, isLoading: propertyLoading, hasProperty } = useTenantProperty();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -24,7 +25,7 @@ const TenantDashboard = ({ navigation }: any) => {
   }, []);
 
   const pendingRequests = requests.filter((r: any) => r.status === 'pending' || r.status === 'open');
-  const isLoading = membershipLoading || subscriptionLoading || reqLoading;
+  const isLoading = membershipLoading || subscriptionLoading || reqLoading || propertyLoading;
 
   return (
     <>
@@ -58,119 +59,250 @@ const TenantDashboard = ({ navigation }: any) => {
           <Text style={styles.subtitle}>{profile?.full_name || user?.email}</Text>
         </View>
 
-      {/* KPI Cards */}
-      <View style={styles.kpiRow}>
-        <View style={[styles.kpiCard, { borderLeftColor: '#007AFF' }]}>
-          <Text style={styles.kpiValue}>
-            {isLoading ? '-' : membership?.status || 'Free'}
-          </Text>
-          <Text style={styles.kpiLabel}>Membership</Text>
-        </View>
-        <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
-          <Text style={styles.kpiValue}>
-            {isLoading ? '-' : subscription?.plan?.replace('_', ' ') || 'Free'}
-          </Text>
-          <Text style={styles.kpiLabel}>Subscription</Text>
-        </View>
-      </View>
-
-      <View style={styles.kpiRow}>
-        <View style={[styles.kpiCard, { borderLeftColor: '#FF9500' }]}>
-          <Text style={styles.kpiValue}>
-            {isLoading ? '-' : pendingRequests.length}
-          </Text>
-          <Text style={styles.kpiLabel}>Open Requests</Text>
-        </View>
-        <View style={[styles.kpiCard, { borderLeftColor: '#AF52DE' }]}>
-          <Text style={styles.kpiValue}>
-            {isLoading ? '-' : requests.length}
-          </Text>
-          <Text style={styles.kpiLabel}>Total Requests</Text>
-        </View>
-      </View>
-
-      {/* Maintenance Requests */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Maintenance Requests</Text>
-        {isLoading ? (
-          [1, 2].map((i) => (
-            <View key={i} style={styles.skeletonCard}>
-              <View style={[styles.skeletonLine, { width: '60%', height: 14 }]} />
-              <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
+      {/* Overview Tab */}
+      {activeTab === 'Overview' && (
+        <>
+          {/* KPI Cards */}
+          <View style={styles.kpiRow}>
+            <View style={[styles.kpiCard, { borderLeftColor: '#007AFF' }]}>
+              <Text style={styles.kpiValue}>
+                {isLoading ? '-' : membership?.status || 'Free'}
+              </Text>
+              <Text style={styles.kpiLabel}>Membership</Text>
             </View>
-          ))
-        ) : requests.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>🔧</Text>
-            <Text style={styles.emptyText}>No maintenance requests</Text>
-            <Text style={styles.emptySubtext}>Submit a request when you need something fixed</Text>
+            <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
+              <Text style={styles.kpiValue}>
+                {isLoading ? '-' : subscription?.plan?.replace('_', ' ') || 'Free'}
+              </Text>
+              <Text style={styles.kpiLabel}>Subscription</Text>
+            </View>
           </View>
-        ) : (
-          requests.slice(0, 5).map((req: any) => (
-            <View key={req.id} style={styles.requestCard}>
-              <View style={[styles.priorityDot, {
-                backgroundColor: req.priority === 'high' ? '#FF3B30' :
-                  req.priority === 'medium' ? '#FF9500' : '#34C759'
-              }]} />
-              <View style={styles.requestContent}>
-                <Text style={styles.requestTitle}>{req.title}</Text>
-                <Text style={styles.requestMeta}>
-                  {req.status} {req.priority ? `- ${req.priority} priority` : ''}
-                </Text>
-              </View>
-            </View>
-          ))
-        )}
-      </View>
 
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonPrimary]}
-            onPress={() => Alert.alert('Pay Rent', 'Rent payment will be available soon.')}
-          >
-            <Text style={styles.actionIcon}>💳</Text>
-            <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>Pay Rent</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => Alert.alert('Report Issue', 'Maintenance request submission will be available soon.')}
-          >
-            <Text style={styles.actionIcon}>🔧</Text>
-            <Text style={styles.actionLabel}>Report Issue</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => Alert.alert('View Lease', 'Lease details coming soon.')}
-          >
-            <Text style={styles.actionIcon}>📄</Text>
-            <Text style={styles.actionLabel}>View Lease</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => Alert.alert('Join Property', 'Enter a property code from your landlord to join a property.')}
-          >
-            <Text style={styles.actionIcon}>🏠</Text>
-            <Text style={styles.actionLabel}>Join Property</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={[styles.actionsGrid, { marginTop: 8 }]}> 
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Messaging')}>
-            <Text style={styles.actionIcon}>💬</Text>
-            <Text style={styles.actionLabel}>Messages</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('SpecialistDirectory')}>
-            <Text style={styles.actionIcon}>🔍</Text>
-            <Text style={styles.actionLabel}>Specialists</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProfileSettings')}>
-            <Text style={styles.actionIcon}>⚙️</Text>
-            <Text style={styles.actionLabel}>Settings</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+          <View style={styles.kpiRow}>
+            <View style={[styles.kpiCard, { borderLeftColor: '#FF9500' }]}>
+              <Text style={styles.kpiValue}>
+                {isLoading ? '-' : pendingRequests.length}
+              </Text>
+              <Text style={styles.kpiLabel}>Open Requests</Text>
+            </View>
+            <View style={[styles.kpiCard, { borderLeftColor: '#AF52DE' }]}>
+              <Text style={styles.kpiValue}>
+                {isLoading ? '-' : requests.length}
+              </Text>
+              <Text style={styles.kpiLabel}>Total Requests</Text>
+            </View>
+          </View>
+
+          {/* My Property Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Property</Text>
+            {propertyLoading ? (
+              <View style={styles.skeletonCard}>
+                <View style={[styles.skeletonLine, { width: '60%', height: 16 }]} />
+                <View style={[styles.skeletonLine, { width: '80%', height: 12, marginTop: 8 }]} />
+              </View>
+            ) : !hasProperty || !tenantProperty ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>🏠</Text>
+                <Text style={styles.emptyText}>Not linked to a property</Text>
+                <Text style={styles.emptySubtext}>Join a property to see details here</Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate('JoinProperty')}
+                >
+                  <Text style={styles.emptyButtonText}>Join Property</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.propertyCard}
+                onPress={() => navigation.navigate('PropertyDetail', { propertyId: tenantProperty.id })}
+              >
+                <View style={styles.propertyCardContent}>
+                  <Text style={styles.propertyName}>{tenantProperty.name}</Text>
+                  <Text style={styles.propertyAddress}>
+                    {tenantProperty.address}, {tenantProperty.city}
+                  </Text>
+                  {tenantUnit && (
+                    <View style={styles.unitBadge}>
+                      <Text style={styles.unitBadgeText}>Unit: {tenantUnit.unit_name}</Text>
+                      {tenantUnit.monthly_rent && (
+                        <Text style={styles.rentText}>${tenantUnit.monthly_rent}/mo</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.chevron}>›</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Maintenance Requests */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Your Maintenance Requests</Text>
+            {isLoading ? (
+              [1, 2].map((i) => (
+                <View key={i} style={styles.skeletonCard}>
+                  <View style={[styles.skeletonLine, { width: '60%', height: 14 }]} />
+                  <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
+                </View>
+              ))
+            ) : requests.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>🔧</Text>
+                <Text style={styles.emptyText}>No maintenance requests</Text>
+                <Text style={styles.emptySubtext}>Submit a request when you need something fixed</Text>
+              </View>
+            ) : (
+              requests.slice(0, 5).map((req: any) => (
+                <TouchableOpacity
+                  key={req.id}
+                  style={styles.requestCard}
+                  onPress={() => navigation.navigate('MaintenanceRequestDetail', { request: req })}
+                >
+                  <View style={[styles.priorityDot, {
+                    backgroundColor: req.priority === 'high' ? '#FF3B30' :
+                      req.priority === 'medium' ? '#FF9500' : '#34C759'
+                  }]} />
+                  <View style={styles.requestContent}>
+                    <Text style={styles.requestTitle}>{req.title}</Text>
+                    <Text style={styles.requestMeta}>
+                      {req.status} {req.priority ? `- ${req.priority} priority` : ''}
+                    </Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+
+          {/* Quick Actions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.actionsGrid}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.actionButtonPrimary]}
+                onPress={() => navigation.navigate('PayRent')}
+              >
+                <Text style={styles.actionIcon}>💳</Text>
+                <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>Pay Rent</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('CreateMaintenanceRequest', {})}
+              >
+                <Text style={styles.actionIcon}>🔧</Text>
+                <Text style={styles.actionLabel}>Report Issue</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => Alert.alert('View Lease', 'Lease details coming soon.')}
+              >
+                <Text style={styles.actionIcon}>📄</Text>
+                <Text style={styles.actionLabel}>View Lease</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('JoinProperty')}
+              >
+                <Text style={styles.actionIcon}>🏠</Text>
+                <Text style={styles.actionLabel}>Join Property</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.actionsGrid, { marginTop: 8 }]}>
+              <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Messaging')}>
+                <Text style={styles.actionIcon}>💬</Text>
+                <Text style={styles.actionLabel}>Messages</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('SpecialistDirectory')}>
+                <Text style={styles.actionIcon}>🔍</Text>
+                <Text style={styles.actionLabel}>Specialists</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProfileSettings')}>
+                <Text style={styles.actionIcon}>⚙️</Text>
+                <Text style={styles.actionLabel}>Settings</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </>
+      )}
+
+      {/* Maintenance Tab */}
+      {activeTab === 'Maintenance' && (
+        <>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>All Maintenance Requests</Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => navigation.navigate('CreateMaintenanceRequest', {})}
+              >
+                <Text style={styles.addButtonText}>+ Report Issue</Text>
+              </TouchableOpacity>
+            </View>
+            {isLoading ? (
+              [1, 2, 3].map((i) => (
+                <View key={i} style={styles.skeletonCard}>
+                  <View style={[styles.skeletonLine, { width: '60%', height: 14 }]} />
+                  <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
+                </View>
+              ))
+            ) : requests.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>🔧</Text>
+                <Text style={styles.emptyText}>No maintenance requests</Text>
+                <Text style={styles.emptySubtext}>Submit a request when you need something fixed</Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate('CreateMaintenanceRequest', {})}
+                >
+                  <Text style={styles.emptyButtonText}>Report Issue</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              requests.map((req: any) => (
+                <TouchableOpacity
+                  key={req.id}
+                  style={styles.requestCard}
+                  onPress={() => navigation.navigate('MaintenanceRequestDetail', { request: req })}
+                >
+                  <View style={[styles.priorityDot, {
+                    backgroundColor: req.priority === 'high' ? '#FF3B30' :
+                      req.priority === 'medium' ? '#FF9500' : '#34C759'
+                  }]} />
+                  <View style={styles.requestContent}>
+                    <Text style={styles.requestTitle}>{req.title}</Text>
+                    <Text style={styles.requestMeta}>
+                      {req.status} {req.priority ? `- ${req.priority} priority` : ''}
+                    </Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </>
+      )}
+
+      {/* Messages Tab */}
+      {activeTab === 'Messages' && (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Messages</Text>
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyIcon}>💬</Text>
+              <Text style={styles.emptyText}>Messages coming soon</Text>
+              <Text style={styles.emptySubtext}>Direct messaging will be available in a future update</Text>
+              <TouchableOpacity
+                style={styles.emptyButton}
+                onPress={() => navigation.navigate('Messaging')}
+              >
+                <Text style={styles.emptyButtonText}>Go to Messages</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </>
+      )}
 
       <View style={{ height: 20 }} />
     </ScrollView>
@@ -220,7 +352,10 @@ const styles = StyleSheet.create({
   kpiValue: { fontSize: 20, fontWeight: '700', color: '#000', textTransform: 'capitalize' },
   kpiLabel: { fontSize: 12, color: '#666', marginTop: 2 },
   section: { paddingHorizontal: 12, paddingTop: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000', marginBottom: 10 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
+  addButton: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  addButtonText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   requestCard: {
     backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 8,
     flexDirection: 'row', alignItems: 'center',
@@ -230,13 +365,27 @@ const styles = StyleSheet.create({
   requestContent: { flex: 1 },
   requestTitle: { fontSize: 14, fontWeight: '600', color: '#000' },
   requestMeta: { fontSize: 12, color: '#666', marginTop: 2, textTransform: 'capitalize' },
+  chevron: { fontSize: 22, color: '#ccc', marginLeft: 8 },
   emptyCard: {
     backgroundColor: '#fff', borderRadius: 10, padding: 24, alignItems: 'center',
     elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2,
   },
   emptyIcon: { fontSize: 32, marginBottom: 8 },
   emptyText: { fontSize: 15, fontWeight: '600', color: '#333' },
-  emptySubtext: { fontSize: 13, color: '#999', marginTop: 2 },
+  emptySubtext: { fontSize: 13, color: '#999', marginTop: 4, marginBottom: 16 },
+  emptyButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  emptyButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  propertyCard: {
+    backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 8,
+    flexDirection: 'row', alignItems: 'center',
+    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2,
+  },
+  propertyCardContent: { flex: 1 },
+  propertyName: { fontSize: 16, fontWeight: '600', color: '#000' },
+  propertyAddress: { fontSize: 13, color: '#666', marginTop: 2 },
+  unitBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
+  unitBadgeText: { fontSize: 13, color: '#007AFF', fontWeight: '600' },
+  rentText: { fontSize: 13, color: '#34C759', fontWeight: '600' },
   actionsGrid: { flexDirection: 'row', gap: 8 },
   actionButton: {
     flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 16, alignItems: 'center',

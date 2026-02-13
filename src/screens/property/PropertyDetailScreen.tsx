@@ -52,17 +52,21 @@ export default function PropertyDetailScreen() {
   }
 
   const handleAddUnit = () => {
-    // Navigate to add unit screen
-    Alert.alert('Add Unit', 'This feature will be available soon');
+    navigation.navigate('AddUnit', {
+      propertyId,
+      propertyName: property.name,
+    });
   };
 
   const handleEditProperty = () => {
-    // Navigate to edit property screen
-    Alert.alert('Edit Property', 'This feature will be available soon');
+    navigation.navigate('EditProperty', { property });
   };
 
   const handleRequestMaintenance = () => {
-    Alert.alert('Request Maintenance', 'This feature will be available soon');
+    navigation.navigate('CreateMaintenanceRequest', {
+      propertyId,
+      propertyName: property.name,
+    });
   };
   
   // Navigation handlers for header

@@ -82,6 +82,25 @@ export interface Specialist {
   updated_at: string;
 }
 
+export interface Payment {
+  id: string;
+  user_id: string;
+  property_id: string;
+  unit_id: string | null;
+  amount: number;
+  payment_type: string;
+  payment_method: string | null;
+  status: string;
+  due_date: string;
+  paid_date: string | null;
+  payment_period: string | null;
+  transaction_id: string | null;
+  notes: string | null;
+  receipt_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Property hooks
 export const useProperties = () => {
   const { user, activeRole } = useAuth();
@@ -141,6 +160,74 @@ export const usePropertyDetail = (propertyId: string | null | undefined) => {
   });
 
   return { property, units, isLoading, error };
+};
+
+// Tenant property hook
+export const useTenantProperty = () => {
+  const { user, activeRole } = useAuth();
+
+  const { data: tenantData, isLoading: tenantLoading } = useQuery({
+    queryKey: ['tenant', user?.id],
+    queryFn: async () => {
+      if (!user?.id || activeRole !== 'tenant') return null;
+
+      const { data, error } = await supabase
+        .from('tenants')
+        .select('property_id, unit_id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (error) {
+        // Tenant hasn't joined a property yet
+        if (error.code === 'PGRST116') return null;
+        throw error;
+      }
+      return data;
+    },
+    enabled: !!user?.id && activeRole === 'tenant',
+  });
+
+  const { data: property, isLoading: propertyLoading } = useQuery({
+    queryKey: ['tenant-property', tenantData?.property_id],
+    queryFn: async () => {
+      if (!tenantData?.property_id) return null;
+
+      const { data, error } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('id', tenantData.property_id)
+        .single();
+
+      if (error) throw error;
+      return data as Property;
+    },
+    enabled: !!tenantData?.property_id,
+  });
+
+  const { data: unit, isLoading: unitLoading } = useQuery({
+    queryKey: ['tenant-unit', tenantData?.unit_id],
+    queryFn: async () => {
+      if (!tenantData?.unit_id) return null;
+
+      const { data, error } = await supabase
+        .from('units')
+        .select('*')
+        .eq('id', tenantData.unit_id)
+        .single();
+
+      if (error) throw error;
+      return data as Unit;
+    },
+    enabled: !!tenantData?.unit_id,
+  });
+
+  return {
+    property,
+    unit,
+    isLoading: tenantLoading || propertyLoading || unitLoading,
+    hasProperty: !!tenantData?.property_id,
+  };
 };
 
 // Project hooks
@@ -255,5 +342,247 @@ export const useSpecialists = () => {
       return data || [];
     },
     staleTime: 30 * 60 * 1000, // Specialists rarely change, cache for 30min
+  });
+};
+
+// Payments
+export const usePayments = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['payments', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as Payment[];
+    },
+    enabled: !!user?.id,
+  });
+};
+
+export const usePropertyPayments = (propertyId: string | null | undefined) => {
+  return useQuery({
+    queryKey: ['property-payments', propertyId],
+    queryFn: async () => {
+      if (!propertyId) return [];
+
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('property_id', propertyId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as Payment[];
+    },
+    enabled: !!propertyId,
+  });
+};
+
+// =============================================
+// MUTATIONS
+// =============================================
+
+// Property mutations
+export const useCreateProperty = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('properties')
+        .insert(property)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['properties', user?.id] });
+    },
+  });
+};
+
+export const useUpdateProperty = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Property> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('properties')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['properties', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['property', data.id] });
+    },
+  });
+};
+
+export const useDeleteProperty = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (propertyId: string) => {
+      const { error } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', propertyId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['properties', user?.id] });
+    },
+  });
+};
+
+// Unit mutations
+export const useCreateUnit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (unit: Omit<Unit, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('units')
+        .insert(unit)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['property-units', data.property_id] });
+      queryClient.invalidateQueries({ queryKey: ['property', data.property_id] });
+    },
+  });
+};
+
+export const useUpdateUnit = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Unit> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('units')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['property-units', data.property_id] });
+      queryClient.invalidateQueries({ queryKey: ['property', data.property_id] });
+    },
+  });
+};
+
+// Maintenance request mutations
+export const useCreateMaintenanceRequest = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (request: Omit<MaintenanceRequest, 'id' | 'created_at' | 'updated_at' | 'work_order_code'>) => {
+      const { data, error } = await supabase
+        .from('maintenance_requests')
+        .insert(request)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['maintenanceRequests', user?.id] });
+    },
+  });
+};
+
+export const useUpdateMaintenanceRequest = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<MaintenanceRequest> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('maintenance_requests')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['maintenanceRequests', user?.id] });
+    },
+  });
+};
+
+// Payment mutations
+export const useCreatePayment = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (payment: Omit<Payment, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase
+        .from('payments')
+        .insert(payment)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments', user?.id] });
+    },
+  });
+};
+
+export const useUpdatePayment = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Payment> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('payments')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['payments', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['property-payments', data.property_id] });
+    },
   });
 };

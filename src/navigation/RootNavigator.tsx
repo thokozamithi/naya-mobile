@@ -17,12 +17,19 @@ import ProfileScreen from '@/screens/profile/ProfileScreen';
 import ProfileSettingsScreen from '@/screens/profile/ProfileSettingsScreen';
 import LoadingScreen from '@/screens/common/LoadingScreen';
 import PropertyDetailScreen from '@/screens/property/PropertyDetailScreen';
+import AddPropertyScreen from '@/screens/property/AddPropertyScreen';
+import AddUnitScreen from '@/screens/property/AddUnitScreen';
+import EditPropertyScreen from '@/screens/property/EditPropertyScreen';
 import ProjectDetailScreen from '@/screens/project/ProjectDetailScreen';
 import MessagingScreen from '@/screens/messaging/MessagingScreen';
+import CreateMaintenanceRequestScreen from '@/screens/maintenance/CreateMaintenanceRequestScreen';
+import MaintenanceRequestDetailScreen from '@/screens/maintenance/MaintenanceRequestDetailScreen';
 import SpecialistDirectoryScreen from '@/screens/specialists/SpecialistDirectoryScreen';
 import SpecialistRegistrationScreen from '@/screens/specialists/SpecialistRegistrationScreen';
 import SpecialistProfileScreen from '@/screens/specialists/SpecialistProfileScreen';
 import UpgradeScreen from '@/screens/subscription/UpgradeScreen';
+import JoinPropertyScreen from '@/screens/tenant/JoinPropertyScreen';
+import PayRentScreen from '@/screens/tenant/PayRentScreen';
 import HomeScreen from '@/screens/home/HomeScreen';
 
 const Stack = createNativeStackNavigator();
@@ -90,10 +97,14 @@ const TenantTabs = () => (
     <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ headerShown: true }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
+    <Stack.Screen name="CreateMaintenanceRequest" component={CreateMaintenanceRequestScreen} options={{ headerShown: false, presentation: 'modal' }} />
+    <Stack.Screen name="MaintenanceRequestDetail" component={MaintenanceRequestDetailScreen} options={{ headerShown: true, title: 'Maintenance Request' }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
     <Stack.Screen name="SpecialistDirectory" component={SpecialistDirectoryScreen} options={{ headerShown: true }} />
     <Stack.Screen name="SpecialistProfile" component={SpecialistProfileScreen} options={{ headerShown: true, title: 'Specialist' }} />
     <Stack.Screen name="SpecialistRegistration" component={SpecialistRegistrationScreen} options={{ headerShown: true, title: 'Register as Specialist' }} />
+    <Stack.Screen name="JoinProperty" component={JoinPropertyScreen} options={{ headerShown: false, presentation: 'modal' }} />
+    <Stack.Screen name="PayRent" component={PayRentScreen} options={{ headerShown: false }} />
     <Stack.Screen name="Upgrade" component={UpgradeScreen} options={{ headerShown: true, title: 'Upgrade' }} />
   </Stack.Navigator>
 );
@@ -132,7 +143,12 @@ const LandlordTabs = () => (
     <Stack.Screen name="LandlordTabsStack" component={LandlordTabsNavigator} />
     <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ headerShown: true }} />
+    <Stack.Screen name="AddProperty" component={AddPropertyScreen} options={{ headerShown: false, presentation: 'modal' }} />
+    <Stack.Screen name="AddUnit" component={AddUnitScreen} options={{ headerShown: false, presentation: 'modal' }} />
+    <Stack.Screen name="EditProperty" component={EditPropertyScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
+    <Stack.Screen name="CreateMaintenanceRequest" component={CreateMaintenanceRequestScreen} options={{ headerShown: false, presentation: 'modal' }} />
+    <Stack.Screen name="MaintenanceRequestDetail" component={MaintenanceRequestDetailScreen} options={{ headerShown: true, title: 'Maintenance Request' }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
     <Stack.Screen name="SpecialistDirectory" component={SpecialistDirectoryScreen} options={{ headerShown: true }} />
     <Stack.Screen name="SpecialistProfile" component={SpecialistProfileScreen} options={{ headerShown: true, title: 'Specialist' }} />

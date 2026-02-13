@@ -7,7 +7,7 @@ import { useProperties, useMaintenanceRequests } from '@/hooks/useData';
 import { useUserProfile } from '@/hooks/useQueries';
 
 const TABS = [
-  'Overview', 'Properties', 'Tenants', 'Employees', 'Salaries', 'Payments', 'Maintenance', 'Specialists', 'Messages', 'Reports'
+  'Overview', 'Properties', 'Maintenance', 'Messages'
 ];
 
 const LandlordDashboard = ({ navigation }: any) => {
@@ -72,138 +72,280 @@ const LandlordDashboard = ({ navigation }: any) => {
           </Text>
         </View>
 
-      {/* KPI Cards */}
-      <View style={styles.kpiRow}>
-        <View style={[styles.kpiCard, { borderLeftColor: '#007AFF' }]}>
-          <Text style={styles.kpiValue}>
-            {isLoading ? '-' : properties.length}
-          </Text>
-          <Text style={styles.kpiLabel}>Properties</Text>
-        </View>
-        <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
-          <Text style={styles.kpiValue}>
-            {isLoading ? '-' : totalUnits}
-          </Text>
-          <Text style={styles.kpiLabel}>Total Units</Text>
-        </View>
-      </View>
-
-      <View style={styles.kpiRow}>
-        <View style={[styles.kpiCard, { borderLeftColor: '#FF9500' }]}>
-          <Text style={styles.kpiValue}>
-            {isLoading ? '-' : pendingRequests.length}
-          </Text>
-          <Text style={styles.kpiLabel}>Pending Requests</Text>
-        </View>
-        <View style={[styles.kpiCard, { borderLeftColor: '#AF52DE' }]}>
-          <Text style={styles.kpiValue}>
-            {isLoading ? '-' : requests.length}
-          </Text>
-          <Text style={styles.kpiLabel}>All Requests</Text>
-        </View>
-      </View>
-
-      {/* Properties List */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Your Properties</Text>
-          <Text style={styles.sectionCount}>{properties.length}</Text>
-        </View>
-
-        {isLoading ? (
-          [1, 2].map((i) => (
-            <View key={i} style={styles.skeletonCard}>
-              <View style={[styles.skeletonLine, { width: '60%', height: 16 }]} />
-              <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
+      {/* Overview Tab */}
+      {activeTab === 'Overview' && (
+        <>
+          {/* KPI Cards */}
+          <View style={styles.kpiRow}>
+            <View style={[styles.kpiCard, { borderLeftColor: '#007AFF' }]}>
+              <Text style={styles.kpiValue}>
+                {isLoading ? '-' : properties.length}
+              </Text>
+              <Text style={styles.kpiLabel}>Properties</Text>
             </View>
-          ))
-        ) : properties.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>🏢</Text>
-            <Text style={styles.emptyText}>No properties yet</Text>
-            <Text style={styles.emptySubtext}>Properties you add will appear here</Text>
+            <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
+              <Text style={styles.kpiValue}>
+                {isLoading ? '-' : totalUnits}
+              </Text>
+              <Text style={styles.kpiLabel}>Total Units</Text>
+            </View>
           </View>
-        ) : (
-          properties.slice(0, 5).map((property: any) => (
-            <TouchableOpacity
-              key={property.id}
-              style={styles.propertyCard}
-              onPress={() => navigation.navigate('PropertyDetail', { propertyId: property.id })}
-            >
-              <View style={styles.propertyCardContent}>
-                <Text style={styles.propertyName}>{property.name}</Text>
-                <Text style={styles.propertyAddress}>
-                  {property.address}, {property.city}
-                </Text>
-                <View style={styles.propertyMeta}>
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{property.property_type}</Text>
-                  </View>
-                  <Text style={styles.unitCount}>{property.total_units} units</Text>
+
+          <View style={styles.kpiRow}>
+            <View style={[styles.kpiCard, { borderLeftColor: '#FF9500' }]}>
+              <Text style={styles.kpiValue}>
+                {isLoading ? '-' : pendingRequests.length}
+              </Text>
+              <Text style={styles.kpiLabel}>Pending Requests</Text>
+            </View>
+            <View style={[styles.kpiCard, { borderLeftColor: '#AF52DE' }]}>
+              <Text style={styles.kpiValue}>
+                {isLoading ? '-' : requests.length}
+              </Text>
+              <Text style={styles.kpiLabel}>All Requests</Text>
+            </View>
+          </View>
+
+          {/* Properties List */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Your Properties</Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => navigation.navigate('AddProperty')}
+              >
+                <Text style={styles.addButtonText}>+ Add Property</Text>
+              </TouchableOpacity>
+            </View>
+
+            {isLoading ? (
+              [1, 2].map((i) => (
+                <View key={i} style={styles.skeletonCard}>
+                  <View style={[styles.skeletonLine, { width: '60%', height: 16 }]} />
+                  <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
                 </View>
+              ))
+            ) : properties.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>🏢</Text>
+                <Text style={styles.emptyText}>No properties yet</Text>
+                <Text style={styles.emptySubtext}>Add your first property to get started</Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate('AddProperty')}
+                >
+                  <Text style={styles.emptyButtonText}>Add Property</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
+            ) : (
+              properties.slice(0, 5).map((property: any) => (
+                <TouchableOpacity
+                  key={property.id}
+                  style={styles.propertyCard}
+                  onPress={() => navigation.navigate('PropertyDetail', { propertyId: property.id })}
+                >
+                  <View style={styles.propertyCardContent}>
+                    <Text style={styles.propertyName}>{property.name}</Text>
+                    <Text style={styles.propertyAddress}>
+                      {property.address}, {property.city}
+                    </Text>
+                    <View style={styles.propertyMeta}>
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{property.property_type}</Text>
+                      </View>
+                      <Text style={styles.unitCount}>{property.total_units} units</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
 
-      {/* Recent Maintenance Requests */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Maintenance</Text>
-        {isLoading ? (
-          <View style={styles.skeletonCard}>
-            <View style={[styles.skeletonLine, { width: '50%', height: 14 }]} />
-            <View style={[styles.skeletonLine, { width: '70%', height: 12, marginTop: 8 }]} />
-          </View>
-        ) : pendingRequests.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>🔧</Text>
-            <Text style={styles.emptyText}>No pending requests</Text>
-          </View>
-        ) : (
-          pendingRequests.slice(0, 3).map((req: any) => (
-            <View key={req.id} style={styles.requestCard}>
-              <View style={[styles.priorityDot, {
-                backgroundColor: req.priority === 'high' ? '#FF3B30' :
-                  req.priority === 'medium' ? '#FF9500' : '#34C759'
-              }]} />
-              <View style={styles.requestContent}>
-                <Text style={styles.requestTitle}>{req.title}</Text>
-                <Text style={styles.requestStatus}>{req.status}</Text>
+          {/* Recent Maintenance Requests */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Maintenance</Text>
+            {isLoading ? (
+              <View style={styles.skeletonCard}>
+                <View style={[styles.skeletonLine, { width: '50%', height: 14 }]} />
+                <View style={[styles.skeletonLine, { width: '70%', height: 12, marginTop: 8 }]} />
               </View>
+            ) : pendingRequests.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>🔧</Text>
+                <Text style={styles.emptyText}>No pending requests</Text>
+              </View>
+            ) : (
+              pendingRequests.slice(0, 3).map((req: any) => (
+                <TouchableOpacity
+                  key={req.id}
+                  style={styles.requestCard}
+                  onPress={() => navigation.navigate('MaintenanceRequestDetail', { request: req })}
+                >
+                  <View style={[styles.priorityDot, {
+                    backgroundColor: req.priority === 'high' ? '#FF3B30' :
+                      req.priority === 'medium' ? '#FF9500' : '#34C759'
+                  }]} />
+                  <View style={styles.requestContent}>
+                    <Text style={styles.requestTitle}>{req.title}</Text>
+                    <Text style={styles.requestStatus}>{req.status}</Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+
+          {/* Quick Actions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.actionsGrid}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('Messaging')}
+              >
+                <Text style={styles.actionIcon}>💬</Text>
+                <Text style={styles.actionLabel}>Messages</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('SpecialistDirectory')}
+              >
+                <Text style={styles.actionIcon}>🔍</Text>
+                <Text style={styles.actionLabel}>Specialists</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('ProfileSettings')}
+              >
+                <Text style={styles.actionIcon}>⚙️</Text>
+                <Text style={styles.actionLabel}>Settings</Text>
+              </TouchableOpacity>
             </View>
-          ))
-        )}
-      </View>
+          </View>
+        </>
+      )}
 
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Messaging')}
-          >
-            <Text style={styles.actionIcon}>💬</Text>
-            <Text style={styles.actionLabel}>Messages</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('SpecialistDirectory')}
-          >
-            <Text style={styles.actionIcon}>🔍</Text>
-            <Text style={styles.actionLabel}>Specialists</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('ProfileSettings')}
-          >
-            <Text style={styles.actionIcon}>⚙️</Text>
-            <Text style={styles.actionLabel}>Settings</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Properties Tab */}
+      {activeTab === 'Properties' && (
+        <>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>All Properties</Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => navigation.navigate('AddProperty')}
+              >
+                <Text style={styles.addButtonText}>+ Add Property</Text>
+              </TouchableOpacity>
+            </View>
+
+            {isLoading ? (
+              [1, 2, 3].map((i) => (
+                <View key={i} style={styles.skeletonCard}>
+                  <View style={[styles.skeletonLine, { width: '60%', height: 16 }]} />
+                  <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
+                </View>
+              ))
+            ) : properties.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>🏢</Text>
+                <Text style={styles.emptyText}>No properties yet</Text>
+                <Text style={styles.emptySubtext}>Add your first property to get started</Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate('AddProperty')}
+                >
+                  <Text style={styles.emptyButtonText}>Add Property</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              properties.map((property: any) => (
+                <TouchableOpacity
+                  key={property.id}
+                  style={styles.propertyCard}
+                  onPress={() => navigation.navigate('PropertyDetail', { propertyId: property.id })}
+                >
+                  <View style={styles.propertyCardContent}>
+                    <Text style={styles.propertyName}>{property.name}</Text>
+                    <Text style={styles.propertyAddress}>
+                      {property.address}, {property.city}
+                    </Text>
+                    <View style={styles.propertyMeta}>
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{property.property_type}</Text>
+                      </View>
+                      <Text style={styles.unitCount}>{property.total_units} units</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </>
+      )}
+
+      {/* Maintenance Tab */}
+      {activeTab === 'Maintenance' && (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>All Maintenance Requests</Text>
+            {isLoading ? (
+              [1, 2, 3].map((i) => (
+                <View key={i} style={styles.skeletonCard}>
+                  <View style={[styles.skeletonLine, { width: '50%', height: 14 }]} />
+                  <View style={[styles.skeletonLine, { width: '70%', height: 12, marginTop: 8 }]} />
+                </View>
+              ))
+            ) : requests.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>🔧</Text>
+                <Text style={styles.emptyText}>No maintenance requests</Text>
+                <Text style={styles.emptySubtext}>Requests will appear here when created</Text>
+              </View>
+            ) : (
+              requests.map((req: any) => (
+                <TouchableOpacity
+                  key={req.id}
+                  style={styles.requestCard}
+                  onPress={() => navigation.navigate('MaintenanceRequestDetail', { request: req })}
+                >
+                  <View style={[styles.priorityDot, {
+                    backgroundColor: req.priority === 'high' ? '#FF3B30' :
+                      req.priority === 'medium' ? '#FF9500' : '#34C759'
+                  }]} />
+                  <View style={styles.requestContent}>
+                    <Text style={styles.requestTitle}>{req.title}</Text>
+                    <Text style={styles.requestStatus}>{req.status}</Text>
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </>
+      )}
+
+      {/* Messages Tab */}
+      {activeTab === 'Messages' && (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Messages</Text>
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyIcon}>💬</Text>
+              <Text style={styles.emptyText}>Messages coming soon</Text>
+              <Text style={styles.emptySubtext}>Direct messaging will be available in a future update</Text>
+              <TouchableOpacity
+                style={styles.emptyButton}
+                onPress={() => navigation.navigate('Messaging')}
+              >
+                <Text style={styles.emptyButtonText}>Go to Messages</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </>
+      )}
 
       <View style={{ height: 20 }} />
     </ScrollView>
@@ -257,8 +399,10 @@ const styles = StyleSheet.create({
   kpiLabel: { fontSize: 12, color: '#666', marginTop: 2 },
   section: { paddingHorizontal: 12, paddingTop: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000', marginBottom: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
   sectionCount: { fontSize: 14, color: '#666', backgroundColor: '#e0e0e0', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  addButton: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  addButtonText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   propertyCard: {
     backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 8,
     flexDirection: 'row', alignItems: 'center',
@@ -287,7 +431,9 @@ const styles = StyleSheet.create({
   },
   emptyIcon: { fontSize: 32, marginBottom: 8 },
   emptyText: { fontSize: 15, fontWeight: '600', color: '#333' },
-  emptySubtext: { fontSize: 13, color: '#999', marginTop: 2 },
+  emptySubtext: { fontSize: 13, color: '#999', marginTop: 4, marginBottom: 16 },
+  emptyButton: { backgroundColor: '#007AFF', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  emptyButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   actionsGrid: { flexDirection: 'row', gap: 8 },
   actionButton: {
     flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 16, alignItems: 'center',
