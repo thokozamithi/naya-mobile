@@ -109,6 +109,11 @@ export default function SpecialistProfileScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => navigation.navigate('SpecialistDirectory' as never)}>
+          <Text style={styles.backLinkText}>← Back to Directory</Text>
+        </TouchableOpacity>
+      </View>
       {/* Profile Header */}
       <View style={styles.profileHeader}>
         {specialist.profile_photo ? (
@@ -250,6 +255,12 @@ export default function SpecialistProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   center: { justifyContent: 'center', alignItems: 'center', padding: 24 },
+  headerRow: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#fff',
+  },
   profileHeader: {
     backgroundColor: '#fff',
     alignItems: 'center',

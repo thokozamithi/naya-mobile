@@ -154,6 +154,11 @@ export default function SpecialistRegistrationScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => navigation.navigate('SpecialistDirectory' as never)}>
+          <Text style={styles.backLink}>← Back to Directory</Text>
+        </TouchableOpacity>
+      </View>
       {/* Tab Bar */}
       <View style={styles.tabBar}>
         {tabs.map((tab) => (
@@ -318,6 +323,16 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 13, fontWeight: '600', color: '#999' },
   tabTextActive: { color: '#007AFF' },
   content: { flex: 1 },
+  headerRow: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#fff',
+  },
+  backLink: {
+    color: '#007AFF',
+    fontSize: 14,
+  },
   section: { padding: 16 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000', marginBottom: 8 },
   hint: { fontSize: 13, color: '#888', marginBottom: 12 },

@@ -65,6 +65,17 @@ export default function PropertyDetailScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => {
+          if (activeRole === 'landlord') {
+            navigation.navigate('LandlordHome', { activeTab: 'properties' } as any);
+          } else {
+            navigation.goBack();
+          }
+        }}>
+          <Text style={styles.backLink}>← Back to Properties</Text>
+        </TouchableOpacity>
+      </View>
       {/* Header with images */}
       <View style={styles.imageContainer}>
         {property.photos && property.photos.length > 0 ? (
@@ -301,6 +312,16 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 16,
     gap: 12,
+  },
+  headerRow: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#fff',
+  },
+  backLink: {
+    color: '#0066cc',
+    fontSize: 14,
   },
   primaryButton: {
     backgroundColor: '#0066cc',

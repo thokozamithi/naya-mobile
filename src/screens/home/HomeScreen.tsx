@@ -14,15 +14,16 @@ const HomeScreen = ({ navigation }: any) => {
   const { user, activeRole } = useAuth();
   const screenWidth = Dimensions.get('window').width;
 
-  const getDashboardTabName = () => {
-    switch (activeRole) {
-      case 'tenant': return 'TenantHome';
-      case 'landlord': return 'LandlordHome';
-      case 'builder': return 'BuilderHome';
-      case 'specialist': return 'SpecialistHome';
-      case 'employee': return 'EmployeeHome';
-      default: return 'Home';
-    }
+  const getDashboardTarget = () => {
+    // Map activeRole to the top-level app stack so navigation works from any context
+    const roleMap: Record<string, string> = {
+      tenant: 'TenantApp',
+      landlord: 'LandlordApp',
+      builder: 'BuilderApp',
+      specialist: 'SpecialistApp',
+      employee: 'EmployeeApp',
+    };
+    return activeRole ? roleMap[activeRole] || 'Home' : null;
   };
 
   const quickAccessItems = [
@@ -31,35 +32,52 @@ const HomeScreen = ({ navigation }: any) => {
       title: 'Properties',
       icon: '🏠',
       roles: ['landlord', 'tenant'],
-      action: () => navigation.navigate(getDashboardTabName()),
+      action: () => {
+        const target = getDashboardTarget();
+        if (!user) return navigation.navigate('Login');
+        return navigation.navigate(target as any);
+      },
     },
     {
       id: 'projects',
       title: 'Projects',
       icon: '📋',
       roles: ['builder', 'employee'],
-      action: () => navigation.navigate(getDashboardTabName()),
+      action: () => {
+        const target = getDashboardTarget();
+        if (!user) return navigation.navigate('Login');
+        return navigation.navigate(target as any);
+      },
     },
     {
       id: 'messaging',
       title: 'Messages',
       icon: '💬',
       roles: ['tenant', 'landlord', 'builder', 'specialist', 'employee'],
-      action: () => navigation.navigate('Messaging'),
+      action: () => {
+        if (!user) return navigation.navigate('Login');
+        return navigation.navigate('Messaging');
+      },
     },
     {
       id: 'specialists',
       title: 'Find Specialists',
       icon: '🔧',
       roles: ['tenant', 'landlord', 'builder', 'employee'],
-      action: () => navigation.navigate('SpecialistDirectory'),
+      action: () => {
+        if (!user) return navigation.navigate('Login');
+        return navigation.navigate('SpecialistDirectory');
+      },
     },
     {
       id: 'profile',
       title: 'Profile Settings',
       icon: '⚙️',
       roles: ['tenant', 'landlord', 'builder', 'specialist', 'employee'],
-      action: () => navigation.navigate('ProfileSettings'),
+      action: () => {
+        if (!user) return navigation.navigate('Login');
+        return navigation.navigate('ProfileSettings');
+      },
     },
   ];
 

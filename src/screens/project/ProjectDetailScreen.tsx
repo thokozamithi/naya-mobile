@@ -86,6 +86,17 @@ export default function ProjectDetailScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => {
+          if (activeRole === 'builder') {
+            navigation.navigate('BuilderHome' as any);
+          } else {
+            navigation.goBack();
+          }
+        }}>
+          <Text style={styles.backLink}>← Back to Dashboard</Text>
+        </TouchableOpacity>
+      </View>
       {/* Header with images */}
       <View style={styles.imageContainer}>
         {project.photos && project.photos.length > 0 ? (
@@ -333,6 +344,16 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 16,
     gap: 12,
+  },
+  headerRow: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#fff',
+  },
+  backLink: {
+    color: '#0066cc',
+    fontSize: 14,
   },
   primaryButton: {
     backgroundColor: '#0066cc',

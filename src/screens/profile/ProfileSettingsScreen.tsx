@@ -117,6 +117,22 @@ export default function ProfileSettingsScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity onPress={() => {
+            // Navigate back to role-based dashboard
+            const roleMap: Record<string, string> = {
+              tenant: 'TenantApp',
+              landlord: 'LandlordApp',
+              builder: 'BuilderApp',
+              specialist: 'SpecialistApp',
+              employee: 'EmployeeApp',
+            };
+            const target = roleMap[activeRole as string] || 'TenantApp';
+            // Use navigate to top-level app stack
+            // @ts-ignore
+            navigation.navigate(target);
+          }}>
+            <Text style={styles.backLink}>← Back to Dashboard</Text>
+          </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile Settings</Text>
         </View>
 
@@ -338,6 +354,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#000',
+  },
+  backLink: {
+    color: '#0066cc',
+    fontSize: 14,
+    marginBottom: 8,
   },
   section: {
     marginHorizontal: 0,
