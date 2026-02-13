@@ -249,6 +249,8 @@ export default function EditUnitScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       <SuccessModal

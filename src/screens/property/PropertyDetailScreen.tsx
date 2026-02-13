@@ -294,6 +294,8 @@ export default function PropertyDetailScreen() {
           )}
         </View>
       </View>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
 
     {/* QR Code Modal */}

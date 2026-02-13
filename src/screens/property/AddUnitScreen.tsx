@@ -235,6 +235,8 @@ export default function AddUnitScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Success Modal */}

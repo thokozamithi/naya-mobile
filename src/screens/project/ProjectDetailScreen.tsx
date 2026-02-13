@@ -201,6 +201,8 @@ export default function ProjectDetailScreen() {
           )}
         </View>
       </View>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }

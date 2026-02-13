@@ -242,6 +242,8 @@ export default function AddPropertyScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Success Modal */}

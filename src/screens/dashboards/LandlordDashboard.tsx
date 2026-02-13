@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, useWindowDimensions } from 'react-native';
 import { useState as useReactState } from 'react';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,6 +18,8 @@ const LandlordDashboard = ({ navigation }: any) => {
   const { data: requests = [], isLoading: reqLoading } = useMaintenanceRequests(user?.id);
   const { profile } = useUserProfile();
   const [refreshing, setRefreshing] = useState(false);
+  const { width } = useWindowDimensions();
+  const isCompact = width < 380;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -40,7 +42,12 @@ const LandlordDashboard = ({ navigation }: any) => {
         role={activeRole || undefined}
       />
       {/* Tab triggers */}
-      <View style={styles.tabBar}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        style={styles.tabBar}
+        contentContainerStyle={styles.tabBarContent}
+      >
         {TABS.map(tab => (
           <TouchableOpacity
             key={tab}
@@ -50,7 +57,7 @@ const LandlordDashboard = ({ navigation }: any) => {
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
       <ScrollView
         style={styles.container}
         refreshControl={
@@ -59,15 +66,15 @@ const LandlordDashboard = ({ navigation }: any) => {
       >
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <Text style={styles.title}>Landlord Dashboard</Text>
+            <Text style={[styles.title, isCompact && styles.titleCompact]}>Landlord Dashboard</Text>
             <TouchableOpacity
               style={styles.headerButton}
               onPress={() => navigation.navigate('SpecialistDirectory')}
             >
-              <Text style={styles.headerButtonText}>Find Specialists</Text>
+              <Text style={[styles.headerButtonText, isCompact && styles.headerButtonTextCompact]}>Find Specialists</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, isCompact && styles.subtitleCompact]}>
             {profile?.full_name || user?.email}
           </Text>
         </View>
@@ -347,7 +354,7 @@ const LandlordDashboard = ({ navigation }: any) => {
         </>
       )}
 
-      <View style={{ height: 20 }} />
+      <View style={{ height: 40 }} />
     </ScrollView>
     </>
   );
@@ -355,17 +362,19 @@ const LandlordDashboard = ({ navigation }: any) => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    flexDirection: 'row',
     backgroundColor: '#f5f5f5',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+  },
+  tabBarContent: {
+    flexDirection: 'row',
     paddingHorizontal: 8,
     paddingVertical: 6,
     gap: 8,
   },
   tabBtn: {
     paddingVertical: 6,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderRadius: 16,
     backgroundColor: 'transparent',
   },
@@ -383,20 +392,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { backgroundColor: '#34C759', padding: 20, paddingTop: 16 },
+  header: { backgroundColor: '#34C759', padding: 16, paddingTop: 12 },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 26, fontWeight: 'bold', color: '#fff' },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
+  titleCompact: { fontSize: 20 },
   headerButton: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  headerButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  subtitle: { fontSize: 14, color: '#fff', marginTop: 4, opacity: 0.9 },
-  kpiRow: { flexDirection: 'row', paddingHorizontal: 12, paddingTop: 12, gap: 8 },
+  headerButtonText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  headerButtonTextCompact: { fontSize: 10 },
+  subtitle: { fontSize: 12, color: '#fff', marginTop: 2, opacity: 0.9 },
+  subtitleCompact: { fontSize: 11 },
+  kpiRow: { flexDirection: 'row', paddingHorizontal: 8, paddingTop: 12, gap: 8 },
   kpiCard: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 14,
+    flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 12,
     borderLeftWidth: 4, elevation: 1,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2,
   },
-  kpiValue: { fontSize: 24, fontWeight: '700', color: '#000' },
-  kpiLabel: { fontSize: 12, color: '#666', marginTop: 2 },
+  kpiValue: { fontSize: 20, fontWeight: '700', color: '#000' },
+  kpiLabel: { fontSize: 11, color: '#666', marginTop: 2 },
   section: { paddingHorizontal: 12, paddingTop: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
@@ -436,11 +448,11 @@ const styles = StyleSheet.create({
   emptyButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   actionsGrid: { flexDirection: 'row', gap: 8 },
   actionButton: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 16, alignItems: 'center',
+    flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 14, alignItems: 'center',
     elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2,
   },
   actionIcon: { fontSize: 24, marginBottom: 6 },
-  actionLabel: { fontSize: 12, fontWeight: '600', color: '#333' },
+  actionLabel: { fontSize: 11, fontWeight: '600', color: '#333' },
   skeletonCard: {
     backgroundColor: '#fff', borderRadius: 10, padding: 16, marginBottom: 8,
   },

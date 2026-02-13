@@ -310,6 +310,8 @@ export default function MaintenanceRequestDetailScreen() {
           </View>
         )}
       </View>
+
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }

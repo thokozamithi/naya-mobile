@@ -12,6 +12,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useSpecialists } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
@@ -216,29 +217,34 @@ const SpecialistDirectoryScreen = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Find Specialists</Text>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Find Specialists</Text>
+          </View>
+          <View style={{ padding: 16 }}>
+            {[1, 2, 3].map((i) => (
+              <React.Fragment key={i}>{renderSkeletonCard()}</React.Fragment>
+            ))}
+          </View>
         </View>
-        <View style={{ padding: 16 }}>
-          {[1, 2, 3].map((i) => (
-            <React.Fragment key={i}>{renderSkeletonCard()}</React.Fragment>
-          ))}
-        </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Failed to load specialists</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.container}>
+          <Text style={styles.errorText}>Failed to load specialists</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Find Specialists</Text>
         <TouchableOpacity
@@ -327,10 +333,15 @@ const SpecialistDirectoryScreen = () => {
         }
       />
     </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -393,6 +404,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingBottom: 40,
     gap: 12,
   },
   card: {

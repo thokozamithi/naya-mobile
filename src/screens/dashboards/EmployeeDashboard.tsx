@@ -107,7 +107,7 @@ const EmployeeDashboard = ({ navigation }: any) => {
           </View>
         </View>
 
-        <View style={{ height: 20 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </>
   );

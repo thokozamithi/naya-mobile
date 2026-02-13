@@ -172,6 +172,8 @@ export default function CreateMaintenanceRequestScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

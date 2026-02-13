@@ -247,6 +247,8 @@ export default function JoinPropertyScreen() {
             </Text>
           </View>
         </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* QR Code Scanner Modal */}

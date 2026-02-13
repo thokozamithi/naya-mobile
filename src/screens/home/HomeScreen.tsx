@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   footer: {
-    height: 20,
+    height: 40,
   },
 });
 

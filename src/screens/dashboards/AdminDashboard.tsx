@@ -168,7 +168,7 @@ export default function AdminDashboard() {
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabBar}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={styles.tabBarContent}>
         {tabs.map((tab) => (
           <TouchableOpacity
             key={tab.key}
@@ -180,7 +180,7 @@ export default function AdminDashboard() {
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* Content */}
       <ScrollView
@@ -278,13 +278,16 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 24, fontWeight: '700', color: '#000' },
   statLabel: { fontSize: 12, color: '#666', marginTop: 2 },
   tabBar: {
-    flexDirection: 'row',
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  tabBarContent: {
+    flexDirection: 'row',
+    paddingHorizontal: 8,
+  },
   tab: {
-    flex: 1, paddingVertical: 12, alignItems: 'center',
+    paddingVertical: 12, paddingHorizontal: 16, alignItems: 'center',
     borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
   tabActive: { borderBottomColor: '#007AFF' },

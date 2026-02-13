@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
 
 const allRoles = [
@@ -39,62 +40,72 @@ const RoleSelectionScreen = ({ navigation }: any) => {
   const isExistingRole = (roleId: string) => userRoles.includes(roleId as any);
 
     return (
-      <View style={styles.container}>
-        <View style={styles.topHeader}>
-          <TouchableOpacity onPress={() => navigation.navigate('Home')}>
-            <Text style={styles.logo}>N</Text>
-          </TouchableOpacity>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('ProfileSettings')}>
-              <Text style={styles.headerBtnText}>Settings</Text>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <View style={styles.container}>
+          <View style={styles.topHeader}>
+            <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+              <Text style={styles.logo}>N</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerBtn} onPress={() => Alert.alert('Create Role', 'Role creation dialog placeholder.') }>
-              <Text style={styles.headerBtnText}>Create Role</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerBtn} onPress={handleSignOut}>
-              <Text style={[styles.headerBtnText, { color: '#FF3B30' }]}>Sign Out</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <Text style={styles.title}>Select Your Role</Text>
-        {userRoles.length > 0 && (
-          <Text style={styles.sectionLabel}>Your Roles</Text>
-        )}
-        <FlatList
-          data={allRoles}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => {
-            const existing = isExistingRole(item.id);
-            return (
-              <TouchableOpacity
-                style={[styles.roleButton, existing && styles.roleButtonExisting]}
-                onPress={() => handleRoleSelect(item.id)}
-                disabled={loading}
-              >
-                <Text style={styles.roleIcon}>{item.icon}</Text>
-                <View style={styles.roleInfo}>
-                  <Text style={styles.roleText}>{item.label}</Text>
-                  <Text style={styles.roleDescription}>{item.description}</Text>
-                </View>
-                <Text style={[styles.roleAction, existing && styles.roleActionExisting]}>
-                  {existing ? 'Switch' : 'Create'}
-                </Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.headerActionsContent}
+            >
+              <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('ProfileSettings')}>
+                <Text style={styles.headerBtnText}>Settings</Text>
               </TouchableOpacity>
-            );
-          }}
-          contentContainerStyle={styles.list}
-        />
-      </View>
+              <TouchableOpacity style={styles.headerBtn} onPress={() => Alert.alert('Create Role', 'Role creation dialog placeholder.') }>
+                <Text style={styles.headerBtnText}>Create Role</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.headerBtn} onPress={handleSignOut}>
+                <Text style={[styles.headerBtnText, { color: '#FF3B30' }]}>Sign Out</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+          <Text style={styles.title}>Select Your Role</Text>
+          {userRoles.length > 0 && (
+            <Text style={styles.sectionLabel}>Your Roles</Text>
+          )}
+          <FlatList
+            data={allRoles}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => {
+              const existing = isExistingRole(item.id);
+              return (
+                <TouchableOpacity
+                  style={[styles.roleButton, existing && styles.roleButtonExisting]}
+                  onPress={() => handleRoleSelect(item.id)}
+                  disabled={loading}
+                >
+                  <Text style={styles.roleIcon}>{item.icon}</Text>
+                  <View style={styles.roleInfo}>
+                    <Text style={styles.roleText}>{item.label}</Text>
+                    <Text style={styles.roleDescription}>{item.description}</Text>
+                  </View>
+                  <Text style={[styles.roleAction, existing && styles.roleActionExisting]}>
+                    {existing ? 'Switch' : 'Create'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+            contentContainerStyle={styles.list}
+          />
+        </View>
+      </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 40,
     marginBottom: 10,
+    paddingTop: 8,
   },
   logo: {
     fontSize: 32,
@@ -102,18 +113,18 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     marginLeft: 2,
   },
-  headerActions: {
+  headerActionsContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
   },
   headerBtn: {
-    marginHorizontal: 4,
+    marginHorizontal: 2,
     paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
   },
   headerBtnText: {
-    fontSize: 15,
+    fontSize: 13,
     color: '#007AFF',
     fontWeight: '600',
   },

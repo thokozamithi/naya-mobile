@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
 
 const RegisterScreen = ({ navigation }: any) => {
@@ -39,74 +40,97 @@ const RegisterScreen = ({ navigation }: any) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.logoRow}><Text style={styles.logo}>N</Text></View>
-        <View style={styles.tabRow}>
-          <TouchableOpacity style={styles.tabButton} onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.tabText}>Sign In</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled>
-            <Text style={styles.tabTextActive}>Sign Up</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join Naya Central</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Full Name (optional)"
-          value={fullName}
-          onChangeText={setFullName}
-          autoCapitalize="words"
-          editable={!loading}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          editable={!loading}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          editable={!loading}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-          editable={!loading}
-        />
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={loading}
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardView} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
-        </TouchableOpacity>
+          <View style={styles.content}>
+            <View style={styles.logoRow}><Text style={styles.logo}>N</Text></View>
+            <View style={styles.tabRow}>
+              <TouchableOpacity style={styles.tabButton} onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.tabText}>Sign In</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled>
+                <Text style={styles.tabTextActive}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join Naya Central</Text>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.link}>Already have an account? Login</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            <TextInput
+              style={styles.input}
+              placeholder="Full Name (optional)"
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+              editable={!loading}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!loading}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              editable={!loading}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              editable={!loading}
+            />
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.link}>Already have an account? Login</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: '#fff',
+    },
+    keyboardView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      paddingBottom: 40,
+    },
     logoRow: {
       alignItems: 'center',
       marginBottom: 10,
@@ -143,14 +167,8 @@ const styles = StyleSheet.create({
       fontWeight: 'bold',
       fontSize: 16,
     },
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   content: {
-    flex: 1,
     padding: 20,
-    justifyContent: 'center',
   },
   title: {
     fontSize: 28,

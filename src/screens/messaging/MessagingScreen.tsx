@@ -253,6 +253,7 @@ export default function MessagingScreen({ navigation }: any) {
             renderItem={renderConversationItem}
             initialNumToRender={15}
             maxToRenderPerBatch={10}
+            contentContainerStyle={{ paddingBottom: 40 }}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#007AFF" />
             }

@@ -37,7 +37,12 @@ const TenantDashboard = ({ navigation }: any) => {
         role={activeRole || undefined}
       />
       {/* Tab triggers */}
-      <View style={styles.tabBar}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        style={styles.tabBar}
+        contentContainerStyle={styles.tabBarContent}
+      >
         {TABS.map(tab => (
           <TouchableOpacity
             key={tab}
@@ -47,7 +52,7 @@ const TenantDashboard = ({ navigation }: any) => {
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
       <ScrollView
         style={styles.container}
         refreshControl={
@@ -314,7 +319,7 @@ const TenantDashboard = ({ navigation }: any) => {
         </>
       )}
 
-      <View style={{ height: 20 }} />
+      <View style={{ height: 40 }} />
     </ScrollView>
     </>
   );
@@ -322,17 +327,19 @@ const TenantDashboard = ({ navigation }: any) => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    flexDirection: 'row',
     backgroundColor: '#f5f5f5',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+  },
+  tabBarContent: {
+    flexDirection: 'row',
     paddingHorizontal: 8,
     paddingVertical: 6,
     gap: 8,
   },
   tabBtn: {
     paddingVertical: 6,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderRadius: 16,
     backgroundColor: 'transparent',
   },

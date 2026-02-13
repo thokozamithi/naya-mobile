@@ -258,6 +258,8 @@ export default function EditPropertyScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       <SuccessModal
