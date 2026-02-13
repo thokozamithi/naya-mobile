@@ -1,4 +1,5 @@
 import { useEffect, useState, useContext, createContext, ReactNode, useRef } from 'react';
+import { Alert } from 'react-native';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/services/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -74,12 +75,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .eq('user_id', userId);
 
     if (error) {
-      // Ignore missing table/endpoint in dev to avoid blocking UI
-      if ((error as { code?: string }).code !== 'PGRST205') {
-        console.warn('Failed to load user roles:', error);
-      } else {
+      const errorCode = (error as { code?: string }).code;
+      // Handle missing table/endpoint (404 or PGRST204/PGRST205)
+      if (errorCode === 'PGRST204' || errorCode === 'PGRST205' || (error.message && error.message.includes('404'))) {
+        console.warn('user_roles table not found. Please run migrations:', error);
         roleTableAvailableRef.current = false;
+        // Don't block UI, just log warning
+        return;
       }
+      // For other errors, log and alert
+      console.error('Failed to load user roles:', error);
+      Alert.alert(
+        'Unable to Load Roles',
+        'There was a problem loading your roles. You can continue using the app, but some features may be limited.\n\nError: ' + (error.message || 'Unknown error')
+      );
       return;
     }
 
@@ -142,14 +151,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .insert(roleInserts);
 
       if (roleError) {
-        if ((roleError as { code?: string }).code === 'PGRST205') {
+        const errorCode = (roleError as { code?: string }).code;
+        // Handle missing table gracefully
+        if (errorCode === 'PGRST204' || errorCode === 'PGRST205' || (roleError.message && roleError.message.includes('404'))) {
+          console.warn('user_roles table not found, storing roles locally only');
           roleTableAvailableRef.current = false;
           setRoles(selectedRoles);
           setActiveRole(selectedRoles[0]);
           AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRoles[0]);
           return { error: null };
         }
+        // For real errors, show detailed message
         console.error('Error setting user roles:', roleError);
+        Alert.alert(
+          'Role Setup Error',
+          'Unable to save your role to the database.\n\nError: ' + (roleError.message || 'Unknown error') +
+          '\n\nPlease contact support if this continues.'
+        );
         return { error: roleError };
       } else {
         setRoles(selectedRoles);
@@ -206,10 +224,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .insert({ user_id: user.id, role });
 
     if (error) {
-      if ((error as { code?: string }).code === 'PGRST205') {
+      const errorCode = (error as { code?: string }).code;
+      if (errorCode === 'PGRST204' || errorCode === 'PGRST205' || (error.message && error.message.includes('404'))) {
         roleTableAvailableRef.current = false;
+        const newRoles = [...roles, role];
+        setRoles(newRoles);
+        if (!activeRole) {
+          setActiveRole(role);
+          AsyncStorage.setItem(ACTIVE_ROLE_KEY, role);
+        }
         return { error: null };
       }
+      console.error('Error adding role:', error);
+      Alert.alert(
+        'Unable to Add Role',
+        'There was a problem adding this role.\n\nError: ' + (error.message || 'Unknown error')
+      );
       return { error };
     }
 

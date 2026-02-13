@@ -87,6 +87,7 @@ const TenantTabsNavigator = () => (
 const TenantTabs = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="TenantTabsStack" component={TenantTabsNavigator} />
+    <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ headerShown: true }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
@@ -129,6 +130,7 @@ const LandlordTabsNavigator = () => (
 const LandlordTabs = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="LandlordTabsStack" component={LandlordTabsNavigator} />
+    <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ headerShown: true }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
@@ -171,6 +173,7 @@ const BuilderTabsNavigator = () => (
 const BuilderTabs = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="BuilderTabsStack" component={BuilderTabsNavigator} />
+    <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} options={{ headerShown: true }} />
     <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ headerShown: true }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
@@ -214,6 +217,7 @@ const SpecialistTabsNavigator = () => (
 const SpecialistTabs = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="SpecialistTabsStack" component={SpecialistTabsNavigator} />
+    <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
     <Stack.Screen name="SpecialistDirectory" component={SpecialistDirectoryScreen} options={{ headerShown: true }} />
@@ -255,6 +259,7 @@ const EmployeeTabsNavigator = () => (
 const EmployeeTabs = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="EmployeeTabsStack" component={EmployeeTabsNavigator} />
+    <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} options={{ headerShown: true }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
@@ -279,6 +284,8 @@ export const RootNavigator = () => {
       ) : !activeRole ? (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
         </Stack.Navigator>
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>

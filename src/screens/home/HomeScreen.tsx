@@ -26,7 +26,11 @@ const HomeScreen = ({ navigation }: any) => {
     const handleGetStarted = () => navigation.navigate('Login');
     const handleDashboard = () => {
       const target = getDashboardTarget();
-      if (target) navigation.navigate(target);
+      if (target) {
+        navigation.navigate(target);
+      } else {
+        navigation.navigate('RoleSelection');
+      }
     };
     const handleSettings = () => navigation.navigate('ProfileSettings');
     const handleSignOut = () => {
@@ -37,13 +41,12 @@ const HomeScreen = ({ navigation }: any) => {
   const screenWidth = Dimensions.get('window').width;
 
   const getDashboardTarget = () => {
-    // Map activeRole to the top-level app stack so navigation works from any context
     const roleMap: Record<string, string> = {
-      tenant: 'TenantApp',
-      landlord: 'LandlordApp',
-      builder: 'BuilderApp',
-      specialist: 'SpecialistApp',
-      employee: 'EmployeeApp',
+      tenant: 'TenantHome',
+      landlord: 'LandlordHome',
+      builder: 'BuilderHome',
+      specialist: 'SpecialistHome',
+      employee: 'EmployeeHome',
     };
     return activeRole ? roleMap[activeRole] || 'Home' : null;
   };
