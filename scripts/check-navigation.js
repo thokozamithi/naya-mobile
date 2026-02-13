@@ -50,9 +50,6 @@ console.log(`Total: ${registeredScreens.size}\n`);
 const screenFiles = walkDir(path.join(SRC, 'screens'), '.tsx');
 const allFiles = [...screenFiles, ...walkDir(path.join(SRC, 'navigation'), '.tsx')];
 
-const navigateRegex = /navigation\.navigate\(\s*['"]([^'"]+)['"]/g;
-const navigateAsNeverRegex = /navigation\.navigate\(\s*['"]([^'"]+)['"]\s+as\s+never/g;
-
 let brokenNavCount = 0;
 const brokenNavs = [];
 

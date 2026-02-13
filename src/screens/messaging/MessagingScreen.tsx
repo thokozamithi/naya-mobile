@@ -231,7 +231,7 @@ export default function MessagingScreen({ navigation }: any) {
         onRoleSwitch={handleRoleSwitch}
         onSignOut={handleSignOut}
         userName={user?.email}
-        role={activeRole}
+        role={activeRole || undefined}
       />
       <View style={styles.container}>
         <View style={styles.header}>

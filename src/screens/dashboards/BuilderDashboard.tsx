@@ -36,7 +36,7 @@ const BuilderDashboard = ({ navigation }: any) => {
         onRoleSwitch={handleRoleSwitch}
         onSignOut={handleSignOut}
         userName={profile?.full_name || user?.email}
-        role={activeRole}
+        role={activeRole || undefined}
       />
       <ScrollView
         style={styles.container}
@@ -95,20 +95,20 @@ const BuilderDashboard = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* ...existing code... */
-        <View style={[styles.kpiCard, { borderLeftColor: '#007AFF' }]}>
+        <View style={styles.kpiRow}>
+          <View style={[styles.kpiCard, { borderLeftColor: '#007AFF' }]}>
           <Text style={styles.kpiValue}>{isLoading ? '-' : projects.length}</Text>
           <Text style={styles.kpiLabel}>Total Projects</Text>
+          </View>
+          <View style={[styles.kpiCard, { borderLeftColor: '#AF52DE' }]}>
+            <Text style={styles.kpiValue}>
+              {isLoading ? '-' : activeProjects.length > 0
+                ? Math.round(activeProjects.reduce((sum: number, p: any) => sum + (p.progress || 0), 0) / activeProjects.length) + '%'
+                : '0%'}
+            </Text>
+            <Text style={styles.kpiLabel}>Avg Progress</Text>
+          </View>
         </View>
-        <View style={[styles.kpiCard, { borderLeftColor: '#AF52DE' }]}>
-          <Text style={styles.kpiValue}>
-            {isLoading ? '-' : activeProjects.length > 0
-              ? Math.round(activeProjects.reduce((sum: number, p: any) => sum + (p.progress || 0), 0) / activeProjects.length) + '%'
-              : '0%'}
-          </Text>
-          <Text style={styles.kpiLabel}>Avg Progress</Text>
-        </View>
-      </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Your Projects</Text>
@@ -178,6 +178,7 @@ const BuilderDashboard = ({ navigation }: any) => {
       </View>
       <View style={{ height: 20 }} />
     </ScrollView>
+    </>
   );
 };
 

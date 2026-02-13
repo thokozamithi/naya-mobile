@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   Image,
+  Alert,
   Dimensions,
 } from 'react-native';
 import { AppHeader } from '@/components/AppHeader';
@@ -151,7 +152,7 @@ const HomeScreen = ({ navigation }: any) => {
         onSettings={handleSettings}
         onSignOut={handleSignOut}
         onRoleSwitch={handleRoleSwitch}
-        activeRole={activeRole}
+        activeRole={activeRole || undefined}
         userName={user?.user_metadata?.full_name}
       />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -247,13 +248,14 @@ const HomeScreen = ({ navigation }: any) => {
         style={styles.tourButton}
         onPress={() => {
           // TODO: Integrate driver.js or tour logic here
-          alert('Tour would start (driver.js integration pending)');
+          Alert.alert('Tour', 'Tour would start (driver.js integration pending)');
         }}
       >
         <Text style={styles.tourButtonText}>Take a Tour</Text>
       </TouchableOpacity>
     </ScrollView>
     </>
+  );
 };
 
 const styles = StyleSheet.create({

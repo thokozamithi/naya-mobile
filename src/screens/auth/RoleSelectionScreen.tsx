@@ -21,16 +21,7 @@ const RoleSelectionScreen = ({ navigation }: any) => {
       if (addError) throw addError;
       // switchRole is synchronous (updates context) but we'll await a tick to let context propagate
       switchRole(roleId as any);
-      // Navigate into the role's app stack so back behavior matches spec
-      const roleMap: Record<string, string> = {
-        tenant: 'TenantApp',
-        landlord: 'LandlordApp',
-        builder: 'BuilderApp',
-        specialist: 'SpecialistApp',
-        employee: 'EmployeeApp',
-      };
-      const target = roleMap[roleId] || 'TenantApp';
-      navigation.navigate(target);
+      // RootNavigator will switch stacks based on activeRole
     } catch (err: any) {
       Alert.alert('Role Error', err?.message || 'Could not set role');
     } finally {

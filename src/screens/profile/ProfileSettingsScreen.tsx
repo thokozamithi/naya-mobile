@@ -18,13 +18,12 @@ import { supabase } from '@/services/supabase';
 import { DashboardHeader } from '@/components/DashboardHeader';
 
 export default function ProfileSettingsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { user, roles, activeRole, switchRole, signOut, refreshRoles } = useAuth();
   const { subscription, isPro, isExpiringSoon } = useSubscription();
   // Navigation handlers for header
   const handleLogoPress = () => navigation.navigate('Home');
   const handleRoleSwitch = () => navigation.navigate('RoleSelection');
-  const handleSignOut = () => { if (typeof signOut === 'function') { signOut(); } navigation.navigate('Home'); };
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -104,6 +103,7 @@ export default function ProfileSettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await signOut();
+          navigation.navigate('Home');
         },
       },
     ]);
@@ -124,7 +124,7 @@ export default function ProfileSettingsScreen() {
         onRoleSwitch={handleRoleSwitch}
         onSignOut={handleSignOut}
         userName={user?.email}
-        role={activeRole}
+        role={activeRole || undefined}
       />
       <SafeAreaView style={styles.container}>
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -149,7 +149,7 @@ export default function ProfileSettingsScreen() {
             <Text style={styles.headerTitle}>Profile Settings</Text>
           </View>
 
-          {/* ...existing code... */
+          {/* ...existing code... */}
         </ScrollView>
       </SafeAreaView>
     </>

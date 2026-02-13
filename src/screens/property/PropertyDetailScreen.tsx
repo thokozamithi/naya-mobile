@@ -20,7 +20,7 @@ interface RouteParams {
 
 export default function PropertyDetailScreen() {
   const route = useRoute();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { propertyId } = (route.params as RouteParams) || {};
   const { activeRole } = useAuth();
   const { signOut, user } = useAuth();
@@ -77,7 +77,7 @@ export default function PropertyDetailScreen() {
         onRoleSwitch={handleRoleSwitch}
         onSignOut={handleSignOut}
         userName={user?.email}
-        role={activeRole}
+        role={activeRole || undefined}
       />
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.headerRow}>

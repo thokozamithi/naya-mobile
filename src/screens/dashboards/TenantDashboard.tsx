@@ -33,7 +33,7 @@ const TenantDashboard = ({ navigation }: any) => {
         onRoleSwitch={() => navigation.navigate('RoleSelection')}
         onSignOut={() => { signOut(); navigation.navigate('Home'); }}
         userName={profile?.full_name || user?.email}
-        role={activeRole}
+        role={activeRole || undefined}
       />
       {/* Tab triggers */}
       <View style={styles.tabBar}>
@@ -174,6 +174,7 @@ const TenantDashboard = ({ navigation }: any) => {
 
       <View style={{ height: 20 }} />
     </ScrollView>
+    </>
   );
 };
 

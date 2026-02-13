@@ -18,7 +18,7 @@ import { supabase } from '@/services/supabase';
 type Tab = 'pending' | 'subscriptions' | 'memberships' | 'analytics';
 
 export default function AdminDashboard() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { user, signOut, activeRole } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('pending');
@@ -107,6 +107,14 @@ export default function AdminDashboard() {
     setRefreshing(false);
   }, [queryClient]);
 
+  const activeSubs = allSubs.filter((sub: any) => sub.status === 'active');
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'pending', label: 'Pending' },
+    { key: 'subscriptions', label: 'Subscriptions' },
+    { key: 'memberships', label: 'Memberships' },
+    { key: 'analytics', label: 'Analytics' },
+  ];
+
   const handleApprove = (subId: string) => {
     Alert.alert('Approve', 'Approve this subscription?', [
       { text: 'Cancel', style: 'cancel' },
@@ -141,7 +149,7 @@ export default function AdminDashboard() {
         onRoleSwitch={handleRoleSwitch}
         onSignOut={handleSignOut}
         userName={user?.email}
-        role={activeRole}
+        role={activeRole || undefined}
       />
       {/* Stats */}
       <View style={styles.statsRow}>
@@ -224,34 +232,13 @@ export default function AdminDashboard() {
                   <View style={[styles.statusBadge, {
                     backgroundColor: sub.status === 'active' ? '#d4edda' :
                       sub.status === 'pending' ? '#fff3cd' : '#f8d7da'
-                  }]}>\n+                    <Text style={[styles.statusText, {
+                  }]}>
+                    <Text style={[styles.statusText, {
                       color: sub.status === 'active' ? '#28a745' :
                         sub.status === 'pending' ? '#856404' : '#d32f2f'
                     }]}>{sub.status}</Text>
                   </View>
                 </View>
-                <Text style={styles.subMeta}>${sub.amount} - {sub.payment_method}</Text>
-              </View>
-            ))
-          )
-        )}
-
-        {activeTab === 'memberships' && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Membership management coming soon</Text>
-          </View>
-        )}
-
-        {activeTab === 'analytics' && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Analytics coming soon</Text>
-          </View>
-        )}
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </View>
-  );
                 <Text style={styles.subMeta}>${sub.amount} - {sub.payment_method}</Text>
               </View>
             ))

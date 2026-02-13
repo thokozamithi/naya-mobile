@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext, createContext, ReactNode } from 'react';
+import { useEffect, useState, useContext, createContext, ReactNode, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/services/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,6 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [activeRole, setActiveRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const roleTableAvailableRef = useRef(true);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -66,12 +67,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchUserRoles = async (userId: string) => {
+    if (!roleTableAvailableRef.current) return;
     const { data, error } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId);
 
-    if (!error && data) {
+    if (error) {
+      // Ignore missing table/endpoint in dev to avoid blocking UI
+      if ((error as { code?: string }).code !== 'PGRST205') {
+        console.warn('Failed to load user roles:', error);
+      } else {
+        roleTableAvailableRef.current = false;
+      }
+      return;
+    }
+
+    if (data) {
       const userRoles = data.map(r => r.role as UserRole);
       setRoles(userRoles);
 
@@ -114,6 +126,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Insert all selected roles after successful signup
     if (data.user && Array.isArray(selectedRoles) && selectedRoles.length > 0) {
+      if (!roleTableAvailableRef.current) {
+        setRoles(selectedRoles);
+        setActiveRole(selectedRoles[0]);
+        AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRoles[0]);
+        return { error: null };
+      }
       const roleInserts = selectedRoles.map(role => ({
         user_id: data.user!.id,
         role: role
@@ -124,13 +142,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .insert(roleInserts);
 
       if (roleError) {
+        if ((roleError as { code?: string }).code === 'PGRST205') {
+          roleTableAvailableRef.current = false;
+          setRoles(selectedRoles);
+          setActiveRole(selectedRoles[0]);
+          AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRoles[0]);
+          return { error: null };
+        }
         console.error('Error setting user roles:', roleError);
         return { error: roleError };
+      } else {
+        setRoles(selectedRoles);
+        setActiveRole(selectedRoles[0]);
+        AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRoles[0]);
       }
-
-      setRoles(selectedRoles);
-      setActiveRole(selectedRoles[0]);
-      AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRoles[0]);
     }
 
     return { error: null };
@@ -166,9 +191,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (roles.includes(role)) return { error: null };
     if (role === 'admin') return { error: new Error('Cannot self-assign admin role') };
 
+    if (!roleTableAvailableRef.current) {
+      const newRoles = [...roles, role];
+      setRoles(newRoles);
+      if (!activeRole) {
+        setActiveRole(role);
+        AsyncStorage.setItem(ACTIVE_ROLE_KEY, role);
+      }
+      return { error: null };
+    }
+
     const { error } = await supabase
       .from('user_roles')
       .insert({ user_id: user.id, role });
+
+    if (error) {
+      if ((error as { code?: string }).code === 'PGRST205') {
+        roleTableAvailableRef.current = false;
+        return { error: null };
+      }
+      return { error };
+    }
 
     if (!error) {
       const newRoles = [...roles, role];
@@ -187,6 +230,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!roles.includes(role)) return { error: null };
     if (roles.length === 1) return { error: new Error('Cannot remove last role') };
     if (role === 'admin') return { error: new Error('Cannot remove admin role') };
+
+    if (!roleTableAvailableRef.current) {
+      const newRoles = roles.filter(r => r !== role);
+      setRoles(newRoles);
+      if (activeRole === role) {
+        setActiveRole(newRoles[0] || null);
+        if (newRoles[0]) {
+          AsyncStorage.setItem(ACTIVE_ROLE_KEY, newRoles[0]);
+        }
+      }
+      return { error: null };
+    }
 
     const { error } = await supabase
       .from('user_roles')

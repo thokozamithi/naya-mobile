@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, DimensionValue } from 'react-native';
 
 interface EmptyStateProps {
   title: string;
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
 
 interface LoadingSkeletonProps {
   height?: number;
-  width?: string | number;
+  width?: DimensionValue;
 }
 
 export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
@@ -58,7 +58,7 @@ export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
   return (
     <View
       style={[
-        styles.skeleton,
+        skeletonStyles.skeleton,
         { height, width },
       ]}
     />

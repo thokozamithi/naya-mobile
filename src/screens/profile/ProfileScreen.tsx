@@ -25,7 +25,7 @@ const ProfileScreen = ({ navigation }: any) => {
         onRoleSwitch={handleRoleSwitch}
         onSignOut={handleSignOut}
         userName={user?.email}
-        role={activeRole}
+        role={activeRole || undefined}
       />
       <ScrollView style={styles.container}>
         <View style={styles.header}>

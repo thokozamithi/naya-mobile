@@ -20,7 +20,7 @@ interface RouteParams {
 
 export default function ProjectDetailScreen() {
   const route = useRoute();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { projectId } = (route.params as RouteParams) || {};
   const { activeRole } = useAuth();
 

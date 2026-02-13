@@ -37,7 +37,7 @@ const LandlordDashboard = ({ navigation }: any) => {
         onRoleSwitch={() => navigation.navigate('RoleSelection')}
         onSignOut={() => { if (typeof signOut === 'function') { signOut(); } navigation.navigate('Home'); }}
         userName={profile?.full_name || user?.email}
-        role={activeRole}
+        role={activeRole || undefined}
       />
       {/* Tab triggers */}
       <View style={styles.tabBar}>
@@ -207,6 +207,7 @@ const LandlordDashboard = ({ navigation }: any) => {
 
       <View style={{ height: 20 }} />
     </ScrollView>
+    </>
   );
 };
 

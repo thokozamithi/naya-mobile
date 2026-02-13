@@ -35,14 +35,17 @@
         "src/navigation/*"
       ]
     },
-    "moduleResolution": "node"
+    "moduleResolution": "bundler"
   },
   "include": [
     "**/*.ts",
     "**/*.tsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.handlerspec.ts"
   ],
   "extends": "expo/tsconfig.base"
 }

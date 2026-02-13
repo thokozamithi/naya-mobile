@@ -32,7 +32,7 @@ const EmployeeDashboard = ({ navigation }: any) => {
         onRoleSwitch={handleRoleSwitch}
         onSignOut={handleSignOut}
         userName={profile?.full_name || user?.email}
-        role={activeRole}
+        role={activeRole || undefined}
       />
       <ScrollView
         style={styles.container}
