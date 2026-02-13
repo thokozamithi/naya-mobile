@@ -95,7 +95,17 @@ const TenantDashboard = ({ navigation }: any) => {
 
           {/* My Property Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>My Property</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>My Property</Text>
+              {hasProperty && tenantProperty && (
+                <TouchableOpacity
+                  style={styles.linkButton}
+                  onPress={() => navigation.navigate('PaymentHistory')}
+                >
+                  <Text style={styles.linkButtonText}>View Payments</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             {propertyLoading ? (
               <View style={styles.skeletonCard}>
                 <View style={[styles.skeletonLine, { width: '60%', height: 16 }]} />
@@ -354,6 +364,8 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 12, paddingTop: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
+  linkButton: { paddingHorizontal: 8, paddingVertical: 4 },
+  linkButtonText: { color: '#007AFF', fontSize: 13, fontWeight: '600' },
   addButton: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   addButtonText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   requestCard: {

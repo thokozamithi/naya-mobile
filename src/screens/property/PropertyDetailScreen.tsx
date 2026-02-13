@@ -68,7 +68,14 @@ export default function PropertyDetailScreen() {
       propertyName: property.name,
     });
   };
-  
+
+  const handleViewPayments = () => {
+    navigation.navigate('PropertyPayments', {
+      propertyId,
+      propertyName: property.name,
+    });
+  };
+
   // Navigation handlers for header
   const handleLogoPress = () => navigation.navigate('Home');
   const handleRoleSwitch = () => navigation.navigate('RoleSelection');
@@ -181,6 +188,9 @@ export default function PropertyDetailScreen() {
             <>
               <TouchableOpacity style={styles.primaryButton} onPress={handleEditProperty}>
                 <Text style={styles.buttonText}>Edit Property</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryButton} onPress={handleViewPayments}>
+                <Text style={styles.secondaryButtonText}>View Payments</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondaryButton} onPress={handleRequestMaintenance}>
                 <Text style={styles.secondaryButtonText}>Request Maintenance</Text>
