@@ -176,7 +176,7 @@ export default function UnitsManagementScreen() {
                 <View style={styles.unitHeader}>
                   <View style={styles.unitLeft}>
                     <Text style={styles.unitName}>{unit.unit_name}</Text>
-                    <Text style={styles.unitCode}>Code: {unit.unit_code}</Text>
+                    <Text style={styles.unitCode}>Join Code: {unit.unit_join_code}</Text>
                   </View>
                   <View style={styles.unitActions}>
                     <View

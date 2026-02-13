@@ -27,6 +27,7 @@ export default function PropertyDetailScreen() {
   const { activeRole } = useAuth();
   const { signOut, user } = useAuth();
   const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState<any>(null);
 
   const { property, units, isLoading, error } = usePropertyDetail(propertyId);
   const deleteProperty = useDeleteProperty();
@@ -242,7 +243,7 @@ export default function PropertyDetailScreen() {
                 <View style={styles.unitHeader}>
                   <View>
                     <Text style={styles.unitName}>{unit.unit_name}</Text>
-                    <Text style={styles.unitCode}>{unit.unit_code}</Text>
+                    <Text style={styles.unitCode}>Join Code: {unit.unit_join_code}</Text>
                   </View>
                   <View style={[
                     styles.statusBadge,
@@ -303,38 +304,68 @@ export default function PropertyDetailScreen() {
       visible={showQRModal}
       animationType="slide"
       transparent={true}
-      onRequestClose={() => setShowQRModal(false)}
+      onRequestClose={() => { setShowQRModal(false); setSelectedUnit(null); }}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Property QR Code</Text>
-            <TouchableOpacity onPress={() => setShowQRModal(false)}>
+            <Text style={styles.modalTitle}>
+              {selectedUnit ? `Unit ${selectedUnit.unit_name} QR Code` : 'Select Unit for QR Code'}
+            </Text>
+            <TouchableOpacity onPress={() => { setShowQRModal(false); setSelectedUnit(null); }}>
               <Text style={styles.modalCloseButton}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.qrContainer}>
-            <Text style={styles.qrPropertyName}>{property?.name}</Text>
-            <View style={styles.qrCodeWrapper}>
-              {property?.property_code && (
+          {!selectedUnit ? (
+            <View style={styles.qrContainer}>
+              <Text style={styles.qrPropertyName}>{property?.name}</Text>
+              <Text style={styles.qrInstructions}>
+                Select a unit to generate its QR code for tenants to scan and join:
+              </Text>
+              <ScrollView style={{ maxHeight: 300, width: '100%' }}>
+                {units.map((unit: any) => (
+                  <TouchableOpacity
+                    key={unit.id}
+                    style={styles.unitSelectItem}
+                    onPress={() => setSelectedUnit(unit)}
+                  >
+                    <View>
+                      <Text style={styles.unitSelectName}>{unit.unit_name}</Text>
+                      <Text style={styles.unitSelectCode}>Join Code: {unit.unit_join_code}</Text>
+                    </View>
+                    <Text style={styles.unitSelectArrow}>→</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          ) : (
+            <View style={styles.qrContainer}>
+              <Text style={styles.qrPropertyName}>{property?.name} - {selectedUnit.unit_name}</Text>
+              <View style={styles.qrCodeWrapper}>
                 <QRCode
-                  value={property.property_code}
+                  value={selectedUnit.unit_join_code}
                   size={250}
                   backgroundColor="#fff"
                   color="#000"
                 />
-              )}
+              </View>
+              <Text style={styles.qrCodeText}>{selectedUnit.unit_join_code}</Text>
+              <Text style={styles.qrInstructions}>
+                Tenants can scan this QR code or enter the code to join this unit
+              </Text>
+              <TouchableOpacity
+                style={styles.backToUnitsBtn}
+                onPress={() => setSelectedUnit(null)}
+              >
+                <Text style={styles.backToUnitsBtnText}>← Back to Units</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.qrCodeText}>{property?.property_code}</Text>
-            <Text style={styles.qrInstructions}>
-              Tenants can scan this QR code to join your property instantly
-            </Text>
-          </View>
+          )}
 
           <TouchableOpacity
             style={styles.modalCloseBtn}
-            onPress={() => setShowQRModal(false)}
+            onPress={() => { setShowQRModal(false); setSelectedUnit(null); }}
           >
             <Text style={styles.modalCloseBtnText}>Close</Text>
           </TouchableOpacity>
@@ -693,5 +724,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#0066cc',
+  },
+  unitSelectItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  unitSelectName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  unitSelectCode: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  unitSelectArrow: {
+    fontSize: 18,
+    color: '#007AFF',
+  },
+  backToUnitsBtn: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  backToUnitsBtnText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '600',
   },
 });

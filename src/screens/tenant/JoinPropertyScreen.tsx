@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/services/supabase';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -20,9 +21,9 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 export default function JoinPropertyScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const [propertyCode, setPropertyCode] = useState('');
-  const [unitCode, setUnitCode] = useState('');
+  const [joinCode, setJoinCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showScanner, setShowScanner] = useState(false);
@@ -31,8 +32,8 @@ export default function JoinPropertyScreen() {
   const validate = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!propertyCode.trim()) {
-      newErrors.propertyCode = 'Property code is required';
+    if (!joinCode.trim()) {
+      newErrors.joinCode = 'Unit join code is required';
     }
 
     setErrors(newErrors);
@@ -41,15 +42,27 @@ export default function JoinPropertyScreen() {
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     setShowScanner(false);
-    setPropertyCode(data);
-    Alert.alert('QR Code Scanned', `Property code: ${data}`, [
-      {
-        text: 'OK',
-        onPress: () => {
-          // User can review the code before joining
-        },
-      },
-    ]);
+    
+    // Try to parse JSON format (for future-proofing)
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed.unit_join_code) {
+        setJoinCode(parsed.unit_join_code);
+        Alert.alert('QR Code Scanned', `Code: ${parsed.unit_join_code}`, [{ text: 'OK' }]);
+        return;
+      }
+      if (parsed.joinCode) {
+        setJoinCode(parsed.joinCode);
+        Alert.alert('QR Code Scanned', `Code: ${parsed.joinCode}`, [{ text: 'OK' }]);
+        return;
+      }
+    } catch {
+      // Not JSON, treat as raw code
+    }
+    
+    // Handle plain code string
+    setJoinCode(data.trim().toUpperCase());
+    Alert.alert('QR Code Scanned', `Code: ${data}`, [{ text: 'OK' }]);
   };
 
   const openScanner = async () => {
@@ -66,7 +79,7 @@ export default function JoinPropertyScreen() {
 
   const handleJoin = async () => {
     if (!validate()) {
-      Alert.alert('Validation Error', 'Please enter a property code');
+      Alert.alert('Validation Error', 'Please enter the unit join code');
       return;
     }
 
@@ -78,77 +91,37 @@ export default function JoinPropertyScreen() {
     try {
       setIsLoading(true);
 
-      // Look up property by property_code (friendly code like "SUN-1234") or UUID
-      const code = propertyCode.trim().toUpperCase();
+      // Call RPC function to join unit
+      const { data, error } = await supabase.rpc('join_unit_by_code', {
+        p_code: joinCode.trim().toUpperCase()
+      });
 
-      // Try property_code first (friendly code)
-      let { data: property, error: propError } = await supabase
-        .from('properties')
-        .select('id, name, address, city, property_code')
-        .eq('property_code', code)
-        .single();
-
-      // If not found by property_code, try by UUID (backward compatibility)
-      if (propError || !property) {
-        const result = await supabase
-          .from('properties')
-          .select('id, name, address, city, property_code')
-          .eq('id', propertyCode.trim())
-          .single();
-
-        property = result.data;
-        propError = result.error;
-      }
-
-      if (propError || !property) {
-        Alert.alert('Error', 'Property not found. Please check the code and try again.');
+      if (error) {
+        console.error('RPC error:', error);
+        Alert.alert('Error', error.message || 'Failed to join property');
         return;
       }
 
-      // Optionally look up unit if unit code provided
-      let unitId = null;
-      if (unitCode.trim()) {
-        const { data: unit, error: unitError } = await supabase
-          .from('units')
-          .select('id')
-          .eq('property_id', property.id)
-          .eq('unit_code', unitCode.trim())
-          .single();
+      const result = data as { success: boolean; error?: string; property_name?: string; property_id?: string };
 
-        if (unitError || !unit) {
-          Alert.alert('Error', 'Unit not found in this property. Please check the unit code.');
-          return;
-        }
-        unitId = unit.id;
-      }
-
-      // Check if already a tenant of this property
-      const { data: existingTenant } = await supabase
-        .from('tenants')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('property_id', property.id)
-        .single();
-
-      if (existingTenant) {
-        Alert.alert('Already Joined', 'You are already a tenant of this property.');
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'Failed to join property');
         return;
       }
 
-      // Create tenant record
-      const { error: insertError } = await supabase
-        .from('tenants')
-        .insert({
-          user_id: user.id,
-          property_id: property.id,
-          unit_id: unitId,
-        });
-
-      if (insertError) throw insertError;
+      // Invalidate relevant queries so landlord and tenant dashboards update
+      queryClient.invalidateQueries({ queryKey: ['tenant-property'] });
+      queryClient.invalidateQueries({ queryKey: ['tenant'] });
+      queryClient.invalidateQueries({ queryKey: ['units'] });
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      if (result.property_id) {
+        queryClient.invalidateQueries({ queryKey: ['units', result.property_id] });
+        queryClient.invalidateQueries({ queryKey: ['property', result.property_id] });
+      }
 
       Alert.alert(
         'Success',
-        `You have joined ${property.name}!`,
+        `You have joined ${result.property_name}!`,
         [
           {
             text: 'OK',
@@ -183,20 +156,21 @@ export default function JoinPropertyScreen() {
             <Text style={styles.infoIcon}>🏠</Text>
             <Text style={styles.infoTitle}>Get Connected</Text>
             <Text style={styles.infoText}>
-              Ask your landlord for the property code, then enter it below to join the property and access your unit.
+              Ask your landlord for your unit's join code, then enter it below or scan the QR code to join.
             </Text>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Property Code *</Text>
+              <Text style={styles.label}>Unit Join Code *</Text>
               <View style={styles.inputRow}>
                 <TextInput
-                  style={[styles.input, styles.inputWithButton, errors.propertyCode && styles.inputError]}
-                  placeholder="Enter property code"
-                  value={propertyCode}
-                  onChangeText={setPropertyCode}
-                  autoCapitalize="none"
+                  style={[styles.input, styles.inputWithButton, errors.joinCode && styles.inputError]}
+                  placeholder="Enter code (e.g., ABC1234)"
+                  value={joinCode}
+                  onChangeText={(text) => setJoinCode(text.toUpperCase())}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
                 />
                 <TouchableOpacity
                   style={styles.scanButton}
@@ -206,25 +180,11 @@ export default function JoinPropertyScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.helperText}>
-                Enter the property code provided by your landlord (e.g., "SUN-1234")
+                Enter the 7-character code provided by your landlord
               </Text>
-              {errors.propertyCode && (
-                <Text style={styles.errorText}>{errors.propertyCode}</Text>
+              {errors.joinCode && (
+                <Text style={styles.errorText}>{errors.joinCode}</Text>
               )}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Unit Code (Optional)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 101, A1"
-                value={unitCode}
-                onChangeText={setUnitCode}
-                autoCapitalize="characters"
-              />
-              <Text style={styles.helperText}>
-                If you're renting a specific unit, enter the unit code here
-              </Text>
             </View>
 
             <TouchableOpacity
@@ -235,7 +195,7 @@ export default function JoinPropertyScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.joinButtonText}>Join Property</Text>
+                <Text style={styles.joinButtonText}>Join Unit</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -243,7 +203,7 @@ export default function JoinPropertyScreen() {
           <View style={styles.tipBox}>
             <Text style={styles.tipTitle}>💡 Tip</Text>
             <Text style={styles.tipText}>
-              Once you join a property, you'll be able to submit maintenance requests, view your lease, and communicate with your landlord.
+              Once you join, you'll be able to submit maintenance requests, view your lease, and communicate with your landlord.
             </Text>
           </View>
         </View>
@@ -259,7 +219,7 @@ export default function JoinPropertyScreen() {
       >
         <View style={styles.scannerContainer}>
           <View style={styles.scannerHeader}>
-            <Text style={styles.scannerTitle}>Scan Property QR Code</Text>
+            <Text style={styles.scannerTitle}>Scan Unit QR Code</Text>
             <TouchableOpacity onPress={() => setShowScanner(false)}>
               <Text style={styles.scannerCloseButton}>✕ Close</Text>
             </TouchableOpacity>
@@ -271,7 +231,7 @@ export default function JoinPropertyScreen() {
           <View style={styles.scannerOverlay}>
             <View style={styles.scannerFrame} />
             <Text style={styles.scannerInstructions}>
-              Position the QR code within the frame
+              Position the unit's QR code within the frame
             </Text>
           </View>
         </View>

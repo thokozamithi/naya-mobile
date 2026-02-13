@@ -31,7 +31,17 @@ const RegisterScreen = ({ navigation }: any) => {
     try {
       const { error } = await signUp(email, password, fullName, []);
       if (error) throw error;
-      // Session is set automatically by signUp → RootNavigator renders RoleSelection
+      // Show confirmation email alert
+      Alert.alert(
+        'Check Your Email',
+        'We\'ve sent a confirmation link to your email address. Please click the link to verify your account before signing in.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Login'),
+          },
+        ]
+      );
     } catch (error: any) {
       Alert.alert('Registration Error', error.message);
     } finally {

@@ -25,6 +25,7 @@ export interface Unit {
   property_id: string;
   unit_name: string;
   unit_code: string;
+  unit_join_code: string;
   status: string;
   bedrooms: number | null;
   bathrooms: number | null;
