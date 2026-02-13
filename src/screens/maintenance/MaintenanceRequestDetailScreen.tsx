@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
-import { useUpdateMaintenanceRequest } from '@/hooks/useData';
+import { useUpdateMaintenanceRequest, useEmployees } from '@/hooks/useData';
 import { MaintenanceRequest } from '@/types';
 
 const STATUSES = [
@@ -36,6 +36,7 @@ export default function MaintenanceRequestDetailScreen() {
   const navigation = useNavigation<any>();
   const { activeRole } = useAuth();
   const updateRequest = useUpdateMaintenanceRequest();
+  const { data: employees = [], isLoading: employeesLoading } = useEmployees();
   const { request } = (route.params as RouteParams) || {};
 
   const [isUpdating, setIsUpdating] = useState(false);
@@ -76,6 +77,68 @@ export default function MaintenanceRequestDetailScreen() {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleAssignEmployee = async (employeeId: string | null) => {
+    if (activeRole !== 'landlord' && activeRole !== 'employee') {
+      Alert.alert('Permission Denied', 'Only landlords and employees can assign requests');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      await updateRequest.mutateAsync({
+        id: request.id,
+        assigned_to: employeeId,
+      });
+
+      const employee = employees.find((e: any) => e.id === employeeId);
+      const message = employeeId
+        ? `Request assigned to ${employee?.full_name || 'employee'}`
+        : 'Employee assignment removed';
+
+      Alert.alert('Success', message, [
+        {
+          text: 'OK',
+          onPress: () => navigation.goBack(),
+        },
+      ]);
+    } catch (error: any) {
+      console.error('Error assigning employee:', error);
+      Alert.alert('Error', error.message || 'Failed to assign employee');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const promptEmployeeAssignment = () => {
+    if (employeesLoading) {
+      Alert.alert('Loading', 'Loading employees...');
+      return;
+    }
+
+    if (employees.length === 0) {
+      Alert.alert('No Employees', 'No employees available to assign. Add employees from user management.');
+      return;
+    }
+
+    const options = [
+      ...employees.map((employee: any) => ({
+        text: employee.full_name || employee.email,
+        onPress: () => handleAssignEmployee(employee.id),
+      })),
+      {
+        text: 'Unassign',
+        style: 'destructive' as const,
+        onPress: () => handleAssignEmployee(null),
+      },
+      {
+        text: 'Cancel',
+        style: 'cancel' as const,
+      },
+    ];
+
+    Alert.alert('Assign Employee', 'Select an employee to assign this request:', options);
   };
 
   const promptStatusChange = () => {
@@ -185,7 +248,20 @@ export default function MaintenanceRequestDetailScreen() {
         {request.assigned_to && (
           <View style={styles.section}>
             <Text style={styles.label}>Assigned To</Text>
-            <Text style={styles.value}>Employee ID: {request.assigned_to}</Text>
+            <Text style={styles.value}>
+              {employees.find((e: any) => e.id === request.assigned_to)?.full_name ||
+                employees.find((e: any) => e.id === request.assigned_to)?.email ||
+                `Employee ID: ${request.assigned_to}`}
+            </Text>
+          </View>
+        )}
+
+        {!request.assigned_to && canUpdateStatus && (
+          <View style={styles.section}>
+            <Text style={styles.label}>Assigned To</Text>
+            <Text style={[styles.value, { color: '#999', fontStyle: 'italic' }]}>
+              Not assigned yet
+            </Text>
           </View>
         )}
 
@@ -208,6 +284,19 @@ export default function MaintenanceRequestDetailScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.updateButtonText}>Update Status</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.assignButton, isUpdating && styles.updateButtonDisabled]}
+              onPress={promptEmployeeAssignment}
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <ActivityIndicator color="#007AFF" />
+              ) : (
+                <Text style={styles.assignButtonText}>
+                  {request.assigned_to ? 'Reassign' : 'Assign'} Employee
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -333,6 +422,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  assignButton: {
+    backgroundColor: '#fff',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#007AFF',
+  },
+  assignButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
   },
   infoBox: {
     backgroundColor: '#E8F4FF',

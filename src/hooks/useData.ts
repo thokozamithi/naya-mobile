@@ -15,6 +15,7 @@ export interface Property {
   total_units: number;
   description: string | null;
   photos: string[] | null;
+  property_code: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -383,6 +384,24 @@ export const usePropertyPayments = (propertyId: string | null | undefined) => {
       return data as Payment[];
     },
     enabled: !!propertyId,
+  });
+};
+
+// Employees
+export const useEmployees = () => {
+  return useQuery({
+    queryKey: ['employees'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role')
+        .eq('role', 'employee')
+        .order('full_name', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 };
 

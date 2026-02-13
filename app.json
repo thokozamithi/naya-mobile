@@ -35,7 +35,8 @@
           "origin": false,
           "asyncRoutes": true
         }
-      ]
+      ],
+      "expo-barcode-scanner"
     ]
   }
 }

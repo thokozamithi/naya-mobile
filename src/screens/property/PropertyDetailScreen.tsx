@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { usePropertyDetail } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
 import { DashboardHeader } from '@/components/DashboardHeader';
+import QRCode from 'react-native-qrcode-svg';
 
 interface RouteParams {
   propertyId: string;
@@ -24,6 +26,7 @@ export default function PropertyDetailScreen() {
   const { propertyId } = (route.params as RouteParams) || {};
   const { activeRole } = useAuth();
   const { signOut, user } = useAuth();
+  const [showQRModal, setShowQRModal] = useState(false);
 
   const { property, units, isLoading, error } = usePropertyDetail(propertyId);
 
@@ -120,7 +123,24 @@ export default function PropertyDetailScreen() {
       {/* Property Info */}
       <View style={styles.content}>
         <Text style={styles.title}>{property.name}</Text>
-        
+
+        {/* Property Code - Prominent for sharing with tenants */}
+        {property.property_code && (
+          <View style={styles.propertyCodeCard}>
+            <Text style={styles.propertyCodeLabel}>Property Code</Text>
+            <Text style={styles.propertyCodeValue}>{property.property_code}</Text>
+            <Text style={styles.propertyCodeHint}>
+              Share this code with tenants to let them join your property
+            </Text>
+            <TouchableOpacity
+              style={styles.qrButton}
+              onPress={() => setShowQRModal(true)}
+            >
+              <Text style={styles.qrButtonText}>📱 Show QR Code</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.label}>Address</Text>
           <Text style={styles.value}>
@@ -205,6 +225,50 @@ export default function PropertyDetailScreen() {
         </View>
       </View>
     </ScrollView>
+
+    {/* QR Code Modal */}
+    <Modal
+      visible={showQRModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowQRModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Property QR Code</Text>
+            <TouchableOpacity onPress={() => setShowQRModal(false)}>
+              <Text style={styles.modalCloseButton}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.qrContainer}>
+            <Text style={styles.qrPropertyName}>{property?.name}</Text>
+            <View style={styles.qrCodeWrapper}>
+              {property?.property_code && (
+                <QRCode
+                  value={property.property_code}
+                  size={250}
+                  backgroundColor="#fff"
+                  color="#000"
+                />
+              )}
+            </View>
+            <Text style={styles.qrCodeText}>{property?.property_code}</Text>
+            <Text style={styles.qrInstructions}>
+              Tenants can scan this QR code to join your property instantly
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.modalCloseBtn}
+            onPress={() => setShowQRModal(false)}
+          >
+            <Text style={styles.modalCloseBtnText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
     </>
   );
 }
@@ -244,6 +308,47 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
     marginBottom: 16,
+  },
+  propertyCodeCard: {
+    backgroundColor: '#E8F4FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+  },
+  propertyCodeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  propertyCodeValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#007AFF',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  propertyCodeHint: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontStyle: 'italic',
+    marginBottom: 12,
+  },
+  qrButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  qrButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   section: {
     marginBottom: 16,
@@ -375,6 +480,89 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0066cc',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+  },
+  modalCloseButton: {
+    fontSize: 24,
+    color: '#666',
+    fontWeight: '300',
+  },
+  qrContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  qrPropertyName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  qrCodeWrapper: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  qrCodeText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#007AFF',
+    letterSpacing: 2,
+    marginBottom: 12,
+  },
+  qrInstructions: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 16,
+  },
+  modalCloseBtn: {
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  modalCloseBtnText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#0066cc',
