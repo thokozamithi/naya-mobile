@@ -33,7 +33,7 @@ const LandlordDashboard = ({ navigation }: any) => {
   const isLoading = propsLoading || reqLoading;
 
   return (
-    <>
+    <View style={styles.root}>
       <DashboardHeader
         onLogoPress={() => navigation.navigate('Home')}
         onRoleSwitch={() => navigation.navigate('RoleSelection')}
@@ -356,11 +356,15 @@ const LandlordDashboard = ({ navigation }: any) => {
 
       <View style={{ height: 40 }} />
     </ScrollView>
-    </>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   tabBar: {
     backgroundColor: '#f5f5f5',
     borderBottomWidth: 1,

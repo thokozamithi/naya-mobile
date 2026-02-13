@@ -136,7 +136,121 @@ export default function ProfileSettingsScreen() {
             <Text style={styles.headerTitle}>Profile Settings</Text>
           </View>
 
-          {/* ...existing code... */}
+          {/* Profile Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Profile Information</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email</Text>
+              <View style={styles.readOnlyInput}>
+                <Text style={styles.readOnlyText}>{user?.email}</Text>
+              </View>
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder="Enter your name"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Phone</Text>
+              <TextInput
+                style={styles.input}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="Enter your phone"
+                keyboardType="phone-pad"
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Bio</Text>
+              <TextInput
+                style={[styles.input, styles.bioInput]}
+                value={bio}
+                onChangeText={setBio}
+                placeholder="Tell us about yourself"
+                multiline
+                numberOfLines={4}
+              />
+            </View>
+            <TouchableOpacity
+              style={[styles.primaryButton, saving && styles.buttonDisabled]}
+              onPress={handleSaveProfile}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Save Changes</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Subscription Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Subscription</Text>
+            <Text style={styles.sectionDescription}>
+              {isPro
+                ? `Pro Plan - ${isExpiringSoon ? 'Expiring soon!' : 'Active'}`
+                : 'Free Plan'}
+            </Text>
+            {!isPro && (
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => navigation.navigate('Upgrade')}
+              >
+                <Text style={styles.secondaryButtonText}>Upgrade to Pro</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Roles Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Roles</Text>
+            <Text style={styles.sectionDescription}>
+              Your current role: {activeRole}
+            </Text>
+            {roles.map((role) => (
+              <TouchableOpacity
+                key={role}
+                style={[styles.roleCard, activeRole === role && styles.roleCardActive]}
+                onPress={() => switchRole(role)}
+              >
+                <View style={styles.roleContent}>
+                  <Text style={styles.roleName}>{role}</Text>
+                  <Text style={styles.roleDescription}>{getRoleDescription(role)}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Notifications Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Notifications</Text>
+            <View style={styles.switchRow}>
+              <Text style={styles.switchLabel}>Push Notifications</Text>
+              <Switch
+                value={notifications}
+                onValueChange={setNotifications}
+                trackColor={{ false: '#ddd', true: '#007AFF' }}
+              />
+            </View>
+          </View>
+
+          {/* Account Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleChangePassword}>
+              <Text style={styles.secondaryButtonText}>Change Password</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.dangerButton} onPress={handleSignOut}>
+              <Text style={styles.dangerButtonText}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
     </>
@@ -391,5 +505,16 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: 32,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  switchLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
   },
 });

@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface DashboardHeaderProps {
   onLogoPress: () => void;
@@ -17,43 +16,35 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   userName,
   role,
 }) => {
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isCompact = width < 380;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onLogoPress}>
-          <Text style={styles.logo}>N</Text>
+    <View style={styles.header}>
+      <TouchableOpacity onPress={onLogoPress}>
+        <Text style={styles.logo}>N</Text>
+      </TouchableOpacity>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        contentContainerStyle={styles.infoRowContent}
+        style={styles.infoRowScroll}
+      >
+        <Text style={[styles.userInfo, isCompact && styles.userInfoCompact]} numberOfLines={1}>
+          {userName} ({role})
+        </Text>
+        <TouchableOpacity onPress={onRoleSwitch} style={styles.switchBtn}>
+          <Text style={[styles.switchText, isCompact && styles.btnTextCompact]}>Switch</Text>
         </TouchableOpacity>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.infoRowContent}
-          style={styles.infoRowScroll}
-        >
-          <Text style={[styles.userInfo, isCompact && styles.userInfoCompact]} numberOfLines={1}>
-            {userName} ({role})
-          </Text>
-          <TouchableOpacity onPress={onRoleSwitch} style={styles.switchBtn}>
-            <Text style={[styles.switchText, isCompact && styles.btnTextCompact]}>Switch</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onSignOut} style={styles.signOutBtn}>
-            <Text style={[styles.signOutText, isCompact && styles.btnTextCompact]}>Sign Out</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+        <TouchableOpacity onPress={onSignOut} style={styles.signOutBtn}>
+          <Text style={[styles.signOutText, isCompact && styles.btnTextCompact]}>Sign Out</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -61,6 +52,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   logo: {
     fontSize: 26,
