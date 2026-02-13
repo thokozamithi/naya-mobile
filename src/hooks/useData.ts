@@ -26,6 +26,9 @@ export interface Unit {
   unit_name: string;
   unit_code: string;
   status: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  square_feet: number | null;
   monthly_rent: number | null;
   created_at: string;
   updated_at: string;
@@ -161,6 +164,26 @@ export const usePropertyDetail = (propertyId: string | null | undefined) => {
   });
 
   return { property, units, isLoading, error };
+};
+
+// Units hook
+export const useUnits = (propertyId: string) => {
+  return useQuery({
+    queryKey: ['units', propertyId],
+    queryFn: async () => {
+      if (!propertyId) return [];
+
+      const { data, error} = await supabase
+        .from('units')
+        .select('*')
+        .eq('property_id', propertyId)
+        .order('unit_name', { ascending: true });
+
+      if (error) throw error;
+      return data as Unit[];
+    },
+    enabled: !!propertyId,
+  });
 };
 
 // Tenant property hook

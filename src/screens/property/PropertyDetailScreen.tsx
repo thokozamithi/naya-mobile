@@ -141,6 +141,33 @@ export default function PropertyDetailScreen() {
           </View>
         )}
 
+        {/* Units Management Card */}
+        {activeRole === 'landlord' && (
+          <TouchableOpacity
+            style={styles.manageUnitsCard}
+            onPress={() =>
+              navigation.navigate('UnitsManagement', {
+                propertyId: property.id,
+                propertyName: property.name,
+              })
+            }
+            activeOpacity={0.7}
+          >
+            <View style={styles.manageUnitsContent}>
+              <View style={styles.manageUnitsLeft}>
+                <Text style={styles.manageUnitsIcon}>🏢</Text>
+                <View>
+                  <Text style={styles.manageUnitsTitle}>Manage Units</Text>
+                  <Text style={styles.manageUnitsSubtitle}>
+                    {units?.length || 0} unit{units?.length !== 1 ? 's' : ''} • Add, edit, and assign tenants
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.manageUnitsArrow}>→</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.label}>Address</Text>
           <Text style={styles.value}>
@@ -349,6 +376,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
+  },
+  manageUnitsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  manageUnitsContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  manageUnitsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  manageUnitsIcon: {
+    fontSize: 32,
+  },
+  manageUnitsTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 4,
+  },
+  manageUnitsSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+  },
+  manageUnitsArrow: {
+    fontSize: 20,
+    color: '#007AFF',
+    fontWeight: '600',
   },
   section: {
     marginBottom: 16,
