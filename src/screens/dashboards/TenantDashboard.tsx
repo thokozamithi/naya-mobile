@@ -1,31 +1,60 @@
-import { useState, useCallback, useState as useReactState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert, Modal } from 'react-native';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { useAuth } from '@/hooks/useAuth';
-import { useMaintenanceRequests, usePropertyRequests, useTenantProperty } from '@/hooks/useData';
-import { useMembership, useSubscription, useUserProfile } from '@/hooks/useQueries';
+import { 
+  useMembership, 
+  useSubscription, 
+  useUserProfile, 
+  useLeaveUnit,
+  useTenantLease,
+  useTenantMaintenanceRequests 
+} from '@/hooks/useQueries';
 
 const TABS = [
-  'Overview', 'Maintenance', 'Messages'
+  'Overview', 'Maintenance', 'Lease', 'Messages'
 ];
 
 const TenantDashboard = ({ navigation }: any) => {
   const { user, signOut, activeRole } = useAuth();
-    const [activeTab, setActiveTab] = useReactState('Overview');
-  const { membership, isLoading: membershipLoading } = useMembership();
+  const [activeTab, setActiveTab] = useState('Overview');
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  
+  // Use the new comprehensive membership hook
+  const { 
+    isJoined, 
+    activeProperty, 
+    activeUnit, 
+    tenantId,
+    isLoading: membershipLoading, 
+    refreshMembership 
+  } = useMembership();
+  
   const { subscription, isLoading: subscriptionLoading } = useSubscription();
   const { profile } = useUserProfile();
-  const { data: requests = [], isLoading: reqLoading } = useMaintenanceRequests(user?.id);
-  const { property: tenantProperty, unit: tenantUnit, isLoading: propertyLoading, hasProperty } = useTenantProperty();
+  const { data: requests = [], isLoading: reqLoading } = useTenantMaintenanceRequests();
+  const { data: lease, isLoading: leaseLoading } = useTenantLease();
+  const leaveUnit = useLeaveUnit();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    await refreshMembership();
     setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+  }, [refreshMembership]);
+
+  const handleLeaveUnit = async () => {
+    try {
+      await leaveUnit.mutateAsync();
+      setShowLeaveModal(false);
+      Alert.alert('Success', 'You have left the unit. You can join another property at any time.');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to leave unit');
+    }
+  };
 
   const pendingRequests = requests.filter((r: any) => r.status === 'pending' || r.status === 'open');
-  const isLoading = membershipLoading || subscriptionLoading || reqLoading || propertyLoading;
+  const isLoading = membershipLoading || subscriptionLoading || reqLoading;
 
   return (
     <View style={styles.root}>
@@ -72,9 +101,9 @@ const TenantDashboard = ({ navigation }: any) => {
           <View style={styles.kpiRow}>
             <View style={[styles.kpiCard, { borderLeftColor: '#007AFF' }]}>
               <Text style={styles.kpiValue}>
-                {isLoading ? '-' : membership?.status || 'Free'}
+                {isLoading ? '-' : isJoined ? 'Active' : 'Not Joined'}
               </Text>
-              <Text style={styles.kpiLabel}>Membership</Text>
+              <Text style={styles.kpiLabel}>Status</Text>
             </View>
             <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
               <Text style={styles.kpiValue}>
@@ -103,7 +132,7 @@ const TenantDashboard = ({ navigation }: any) => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>My Property</Text>
-              {hasProperty && tenantProperty && (
+              {isJoined && activeProperty && (
                 <TouchableOpacity
                   style={styles.linkButton}
                   onPress={() => navigation.navigate('PaymentHistory')}
@@ -112,12 +141,12 @@ const TenantDashboard = ({ navigation }: any) => {
                 </TouchableOpacity>
               )}
             </View>
-            {propertyLoading ? (
+            {membershipLoading ? (
               <View style={styles.skeletonCard}>
                 <View style={[styles.skeletonLine, { width: '60%', height: 16 }]} />
                 <View style={[styles.skeletonLine, { width: '80%', height: 12, marginTop: 8 }]} />
               </View>
-            ) : !hasProperty || !tenantProperty ? (
+            ) : !isJoined || !activeProperty ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyIcon}>🏠</Text>
                 <Text style={styles.emptyText}>Not linked to a property</Text>
@@ -132,18 +161,18 @@ const TenantDashboard = ({ navigation }: any) => {
             ) : (
               <TouchableOpacity
                 style={styles.propertyCard}
-                onPress={() => navigation.navigate('PropertyDetail', { propertyId: tenantProperty.id })}
+                onPress={() => navigation.navigate('PropertyDetail', { propertyId: activeProperty.id })}
               >
                 <View style={styles.propertyCardContent}>
-                  <Text style={styles.propertyName}>{tenantProperty.name}</Text>
+                  <Text style={styles.propertyName}>{activeProperty.name}</Text>
                   <Text style={styles.propertyAddress}>
-                    {tenantProperty.address}, {tenantProperty.city}
+                    {activeProperty.address}, {activeProperty.city}
                   </Text>
-                  {tenantUnit && (
+                  {activeUnit && (
                     <View style={styles.unitBadge}>
-                      <Text style={styles.unitBadgeText}>Unit: {tenantUnit.unit_name}</Text>
-                      {tenantUnit.monthly_rent && (
-                        <Text style={styles.rentText}>${tenantUnit.monthly_rent}/mo</Text>
+                      <Text style={styles.unitBadgeText}>Unit: {activeUnit.unit_name}</Text>
+                      {activeUnit.monthly_rent && (
+                        <Text style={styles.rentText}>${activeUnit.monthly_rent}/mo</Text>
                       )}
                     </View>
                   )}
@@ -196,37 +225,76 @@ const TenantDashboard = ({ navigation }: any) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Quick Actions</Text>
             <View style={styles.actionsGrid}>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.actionButtonPrimary]}
-                onPress={() => navigation.navigate('PayRent')}
-              >
-                <Text style={styles.actionIcon}>💳</Text>
-                <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>Pay Rent</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => navigation.navigate('CreateMaintenanceRequest', {})}
-              >
-                <Text style={styles.actionIcon}>🔧</Text>
-                <Text style={styles.actionLabel}>Report Issue</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => Alert.alert('View Lease', 'Lease details coming soon.')}
-              >
-                <Text style={styles.actionIcon}>📄</Text>
-                <Text style={styles.actionLabel}>View Lease</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => navigation.navigate('JoinProperty')}
-              >
-                <Text style={styles.actionIcon}>🏠</Text>
-                <Text style={styles.actionLabel}>Join Property</Text>
-              </TouchableOpacity>
+              {isJoined ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.actionButtonPrimary]}
+                    onPress={() => navigation.navigate('PayRent')}
+                  >
+                    <Text style={styles.actionIcon}>💳</Text>
+                    <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>Pay Rent</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => navigation.navigate('CreateMaintenanceRequest', {
+                      propertyId: activeProperty?.id,
+                      unitId: activeUnit?.id,
+                      propertyName: activeProperty?.name
+                    })}
+                  >
+                    <Text style={styles.actionIcon}>🔧</Text>
+                    <Text style={styles.actionLabel}>Report Issue</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => setActiveTab('Lease')}
+                  >
+                    <Text style={styles.actionIcon}>📄</Text>
+                    <Text style={styles.actionLabel}>View Lease</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.actionButtonDanger]}
+                    onPress={() => setShowLeaveModal(true)}
+                  >
+                    <Text style={styles.actionIcon}>🚪</Text>
+                    <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Leave Unit</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.actionButtonPrimary]}
+                    onPress={() => navigation.navigate('JoinProperty')}
+                  >
+                    <Text style={styles.actionIcon}>🏠</Text>
+                    <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>Join Property</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { opacity: 0.5 }]}
+                    disabled
+                  >
+                    <Text style={styles.actionIcon}>💳</Text>
+                    <Text style={styles.actionLabel}>Pay Rent</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { opacity: 0.5 }]}
+                    disabled
+                  >
+                    <Text style={styles.actionIcon}>🔧</Text>
+                    <Text style={styles.actionLabel}>Report Issue</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { opacity: 0.5 }]}
+                    disabled
+                  >
+                    <Text style={styles.actionIcon}>📄</Text>
+                    <Text style={styles.actionLabel}>View Lease</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
             <View style={[styles.actionsGrid, { marginTop: 8 }]}>
-              <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Messaging')}>
+              <TouchableOpacity style={styles.actionButton} onPress={() => setActiveTab('Messages')}>
                 <Text style={styles.actionIcon}>💬</Text>
                 <Text style={styles.actionLabel}>Messages</Text>
               </TouchableOpacity>

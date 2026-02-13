@@ -171,6 +171,6 @@ create policy "Landlords can manage their units"
   on public.units for all
   using (
     property_id in (
-      select id from public.properties where landlord_id = auth.uid()
+      select id from public.properties where user_id = auth.uid()
     )
   );
