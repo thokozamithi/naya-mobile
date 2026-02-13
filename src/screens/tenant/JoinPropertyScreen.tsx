@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   ScrollView,
@@ -15,7 +15,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/services/supabase';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 export default function JoinPropertyScreen() {
   const navigation = useNavigation<any>();
@@ -26,14 +26,7 @@ export default function JoinPropertyScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showScanner, setShowScanner] = useState(false);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
+  const [permission, requestPermission] = useCameraPermissions();
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -46,7 +39,7 @@ export default function JoinPropertyScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
     setShowScanner(false);
     setPropertyCode(data);
     Alert.alert('QR Code Scanned', `Property code: ${data}`, [
@@ -60,19 +53,12 @@ export default function JoinPropertyScreen() {
   };
 
   const openScanner = async () => {
-    if (hasPermission === null) {
-      Alert.alert('Permission', 'Requesting camera permission...');
-      const { status } = await BarCodeScanner.requestPermissionsAsync();
-      setHasPermission(status === 'granted');
-      if (status !== 'granted') {
+    if (!permission || !permission.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
         Alert.alert('Permission Denied', 'Camera permission is required to scan QR codes.');
         return;
       }
-    }
-
-    if (hasPermission === false) {
-      Alert.alert('Permission Denied', 'Camera permission is required to scan QR codes. Please enable it in your device settings.');
-      return;
     }
 
     setShowScanner(true);
@@ -276,8 +262,8 @@ export default function JoinPropertyScreen() {
               <Text style={styles.scannerCloseButton}>✕ Close</Text>
             </TouchableOpacity>
           </View>
-          <BarCodeScanner
-            onBarCodeScanned={handleBarCodeScanned}
+          <CameraView
+            onBarcodeScanned={handleBarCodeScanned}
             style={StyleSheet.absoluteFillObject}
           />
           <View style={styles.scannerOverlay}>

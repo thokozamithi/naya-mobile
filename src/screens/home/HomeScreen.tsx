@@ -244,9 +244,6 @@ const HomeScreen = ({ navigation }: any) => {
         </View>
       </View>
 
-      {/* Footer Spacing */}
-      <View style={styles.footer} />
-      {/* Floating Take a Tour button */}
       <TouchableOpacity
         style={styles.tourButton}
         onPress={() => {
@@ -256,68 +253,68 @@ const HomeScreen = ({ navigation }: any) => {
       >
         <Text style={styles.tourButtonText}>Take a Tour</Text>
       </TouchableOpacity>
+      <View style={styles.footer} />
     </ScrollView>
     </>
   );
 };
 
 const styles = StyleSheet.create({
-    tourButton: {
-      position: 'absolute',
-      bottom: 30,
-      right: 20,
-      backgroundColor: '#007AFF',
-      borderRadius: 24,
-      paddingVertical: 12,
-      paddingHorizontal: 22,
-      elevation: 4,
-      zIndex: 100,
-    },
-    tourButtonText: {
-      color: '#fff',
-      fontWeight: '700',
-      fontSize: 16,
-    },
+  tourButton: {
+    alignSelf: 'flex-end',
+    marginTop: 12,
+    marginRight: 16,
+    backgroundColor: '#007AFF',
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    elevation: 2,
+  },
+  tourButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
   },
   welcomeSection: {
     paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
     backgroundColor: '#f5f5f5',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: '#000',
     marginBottom: 4,
   },
   userName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     color: '#007AFF',
     marginBottom: 8,
   },
   description: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#666',
-    lineHeight: 18,
+    lineHeight: 16,
   },
   statsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     gap: 12,
   },
   statCard: {
     flex: 1,
     backgroundColor: '#f9f9f9',
     borderRadius: 12,
-    padding: 12,
+    padding: 10,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
@@ -328,7 +325,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#000',
     marginBottom: 4,
@@ -339,10 +336,10 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#000',
     marginBottom: 12,
@@ -356,10 +353,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f0f8ff',
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: 120,
+    minHeight: 96,
     borderWidth: 1,
     borderColor: '#d0e8ff',
   },
@@ -370,11 +367,11 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   quickAccessIcon: {
-    fontSize: 32,
+    fontSize: 26,
     marginBottom: 8,
   },
   quickAccessTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#007AFF',
     textAlign: 'center',
@@ -403,12 +400,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   activityTitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#000',
     fontWeight: '500',
   },
   activityTime: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#999',
     marginTop: 2,
   },
@@ -425,16 +422,16 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   featureBullet: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#007AFF',
     marginRight: 12,
     fontWeight: '600',
   },
   featureText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 12,
     color: '#555',
-    lineHeight: 18,
+    lineHeight: 16,
   },
   footer: {
     height: 20,
