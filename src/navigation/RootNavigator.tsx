@@ -53,6 +53,9 @@ const tabScreenOptions = {
     fontSize: 11,
     fontWeight: '600' as const,
   },
+  sceneContainerStyle: {
+    backgroundColor: '#f5f5f5',
+  },
 };
 
 const TabIcon = ({ label, focused }: { label: string; focused: boolean }) => (
@@ -81,6 +84,7 @@ const TenantTabsNavigator = () => (
       name="TenantHome"
       component={TenantDashboard}
       options={{
+        headerShown: false,
         title: 'Dashboard',
         tabBarIcon: ({ focused }) => <TabIcon label="📋" focused={focused} />,
       }}
@@ -130,6 +134,7 @@ const LandlordTabsNavigator = () => (
       name="LandlordHome"
       component={LandlordDashboard}
       options={{
+        headerShown: false,
         title: 'Properties',
         tabBarIcon: ({ focused }) => <TabIcon label="🏢" focused={focused} />,
       }}

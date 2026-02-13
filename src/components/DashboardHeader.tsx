@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface DashboardHeaderProps {
   onLogoPress: () => void;
@@ -20,31 +21,36 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const isCompact = width < 380;
 
   return (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={onLogoPress}>
-        <Text style={styles.logo}>N</Text>
-      </TouchableOpacity>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        contentContainerStyle={styles.infoRowContent}
-        style={styles.infoRowScroll}
-      >
-        <Text style={[styles.userInfo, isCompact && styles.userInfoCompact]} numberOfLines={1}>
-          {userName} ({role})
-        </Text>
-        <TouchableOpacity onPress={onRoleSwitch} style={styles.switchBtn}>
-          <Text style={[styles.switchText, isCompact && styles.btnTextCompact]}>Switch</Text>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onLogoPress}>
+          <Text style={styles.logo}>N</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onSignOut} style={styles.signOutBtn}>
-          <Text style={[styles.signOutText, isCompact && styles.btnTextCompact]}>Sign Out</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.infoRowContent}
+          style={styles.infoRowScroll}
+        >
+          <Text style={[styles.userInfo, isCompact && styles.userInfoCompact]} numberOfLines={1}>
+            {userName} ({role})
+          </Text>
+          <TouchableOpacity onPress={onRoleSwitch} style={styles.switchBtn}>
+            <Text style={[styles.switchText, isCompact && styles.btnTextCompact]}>Switch</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onSignOut} style={styles.signOutBtn}>
+            <Text style={[styles.signOutText, isCompact && styles.btnTextCompact]}>Sign Out</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: '#fff',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

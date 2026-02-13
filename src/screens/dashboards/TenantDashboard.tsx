@@ -28,7 +28,7 @@ const TenantDashboard = ({ navigation }: any) => {
   const isLoading = membershipLoading || subscriptionLoading || reqLoading || propertyLoading;
 
   return (
-    <>
+    <View style={styles.root}>
       <DashboardHeader
         onLogoPress={() => navigation.navigate('Home')}
         onRoleSwitch={() => navigation.navigate('RoleSelection')}
@@ -37,12 +37,12 @@ const TenantDashboard = ({ navigation }: any) => {
         role={activeRole || undefined}
       />
       {/* Tab triggers */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        style={styles.tabBar}
-        contentContainerStyle={styles.tabBarContent}
-      >
+      <View style={styles.tabBar}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.tabBarContent}
+        >
         {TABS.map(tab => (
           <TouchableOpacity
             key={tab}
@@ -52,7 +52,8 @@ const TenantDashboard = ({ navigation }: any) => {
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+        </ScrollView>
+      </View>
       <ScrollView
         style={styles.container}
         refreshControl={
@@ -321,15 +322,21 @@ const TenantDashboard = ({ navigation }: any) => {
 
       <View style={{ height: 40 }} />
     </ScrollView>
-    </>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   tabBar: {
     backgroundColor: '#f5f5f5',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    flexGrow: 0,
+    flexShrink: 0,
   },
   tabBarContent: {
     flexDirection: 'row',
