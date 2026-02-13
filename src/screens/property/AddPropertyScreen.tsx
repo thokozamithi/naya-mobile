@@ -66,7 +66,8 @@ export default function AddPropertyScreen() {
     }
 
     try {
-      await createProperty.mutateAsync({
+      // Temporary: Omit description until schema cache is synced
+      const propertyData: any = {
         user_id: user.id,
         name: name.trim(),
         address: address.trim(),
@@ -75,8 +76,15 @@ export default function AddPropertyScreen() {
         zip: zip.trim(),
         property_type: propertyType,
         total_units: parseInt(totalUnits),
-        description: description.trim() || null,
-      });
+      };
+
+      // Only include description if it has a value (avoid schema cache error)
+      // TODO: Remove this check after running schema sync in Supabase Dashboard
+      if (description.trim()) {
+        propertyData.description = description.trim();
+      }
+
+      await createProperty.mutateAsync(propertyData);
 
       Alert.alert('Success', 'Property added successfully!', [
         {
