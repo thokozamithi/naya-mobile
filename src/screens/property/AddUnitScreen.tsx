@@ -14,6 +14,7 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreateUnit } from '@/hooks/useData';
+import SuccessModal from '@/components/SuccessModal';
 
 const UNIT_STATUSES = [
   { value: 'vacant', label: 'Vacant', color: '#FF9500' },
@@ -43,6 +44,8 @@ export default function AddUnitScreen() {
   const [squareFeet, setSquareFeet] = useState('');
   const [monthlyRent, setMonthlyRent] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdUnitName, setCreatedUnitName] = useState('');
 
   if (!propertyId) {
     return (
@@ -86,16 +89,17 @@ export default function AddUnitScreen() {
         monthly_rent: monthlyRent ? parseFloat(monthlyRent) : null,
       });
 
-      Alert.alert('Success', 'Unit added successfully!', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      setCreatedUnitName(unitName.trim());
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Error creating unit:', error);
       Alert.alert('Error', error.message || 'Failed to create unit');
     }
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    navigation.goBack();
   };
 
   return (
@@ -232,6 +236,15 @@ export default function AddUnitScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Unit Created!"
+        message={`${createdUnitName} has been added successfully to ${propertyName || 'this property'}. You can now assign tenants and manage this unit.`}
+        onClose={handleSuccessModalClose}
+        icon="🏢"
+      />
     </KeyboardAvoidingView>
   );
 }

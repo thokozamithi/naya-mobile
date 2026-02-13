@@ -14,6 +14,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreateProperty } from '@/hooks/useData';
+import SuccessModal from '@/components/SuccessModal';
 
 const PROPERTY_TYPES = [
   { value: 'apartment', label: 'Apartment' },
@@ -37,6 +38,8 @@ export default function AddPropertyScreen() {
   const [totalUnits, setTotalUnits] = useState('1');
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdPropertyName, setCreatedPropertyName] = useState('');
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -86,16 +89,17 @@ export default function AddPropertyScreen() {
 
       await createProperty.mutateAsync(propertyData);
 
-      Alert.alert('Success', 'Property added successfully!', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      setCreatedPropertyName(name.trim());
+      setShowSuccessModal(true);
     } catch (error: any) {
       console.error('Error creating property:', error);
       Alert.alert('Error', error.message || 'Failed to create property');
     }
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    navigation.goBack();
   };
 
   return (
@@ -239,6 +243,15 @@ export default function AddPropertyScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Property Created!"
+        message={`${createdPropertyName} has been added successfully. You can now add units and share the property code with tenants.`}
+        onClose={handleSuccessModalClose}
+        icon="🏠"
+      />
     </KeyboardAvoidingView>
   );
 }
