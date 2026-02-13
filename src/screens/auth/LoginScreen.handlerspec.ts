@@ -1,0 +1,21 @@
+// Automated check: Warn if any navigation/button handler is missing in LoginScreen
+import fs from 'fs';
+import path from 'path';
+
+const filePath = path.join(__dirname, 'LoginScreen.tsx');
+const code = fs.readFileSync(filePath, 'utf8');
+
+const requiredHandlers = [
+  'navigation.navigate',
+  'handleLogin',
+  'handleForgotPassword',
+  'setForgotMode',
+];
+
+describe('LoginScreen handler detector', () => {
+  requiredHandlers.forEach(handler => {
+    it(`should have handler: ${handler}`, () => {
+      expect(code.includes(handler)).toBe(true);
+    });
+  });
+});

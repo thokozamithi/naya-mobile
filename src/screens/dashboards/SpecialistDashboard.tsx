@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } 
 import { useAuth } from '@/hooks/useAuth';
 import { useMessages } from '@/hooks/useData';
 import { useUserProfile } from '@/hooks/useQueries';
+import { DashboardHeader } from '@/components/DashboardHeader';
 
 const SpecialistDashboard = ({ navigation }: any) => {
-  const { user } = useAuth();
+  const { user, signOut, activeRole } = useAuth();
   const { profile } = useUserProfile();
   const { data: messages = [], isLoading } = useMessages(user?.id);
   const [refreshing, setRefreshing] = useState(false);
@@ -17,66 +18,86 @@ const SpecialistDashboard = ({ navigation }: any) => {
 
   const unreadMessages = messages.filter((m: any) => m.receiver_id === user?.id);
 
+  // Navigation handlers for header
+  const handleLogoPress = () => navigation.navigate('Home');
+  const handleRoleSwitch = () => navigation.navigate('RoleSelection');
+  const handleSignOut = () => { if (typeof signOut === 'function') { signOut(); } navigation.navigate('Home'); };
+
+  // Quick actions
+  const handleDirectory = () => navigation.navigate('SpecialistDirectory');
+  const handleSettings = () => navigation.navigate('ProfileSettings');
+  const handleMessages = () => navigation.navigate('Messaging');
+  const handleEditProfile = () => navigation.navigate('SpecialistRegistration');
+
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#AF52DE" />
-      }
-    >
-      <View style={styles.header}>
-        <Text style={styles.title}>Specialist Dashboard</Text>
-        <Text style={styles.subtitle}>{profile?.full_name || user?.email}</Text>
-      </View>
-
-      <View style={styles.kpiRow}>
-        <View style={[styles.kpiCard, { borderLeftColor: '#AF52DE' }]}>
-          <Text style={styles.kpiValue}>{isLoading ? '-' : '0'}</Text>
-          <Text style={styles.kpiLabel}>Active Jobs</Text>
+    <>
+      <DashboardHeader
+        onLogoPress={handleLogoPress}
+        onRoleSwitch={handleRoleSwitch}
+        onSignOut={handleSignOut}
+        userName={profile?.full_name || user?.email}
+        role={activeRole}
+      />
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#AF52DE" />
+        }
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Specialist Dashboard</Text>
+          <Text style={styles.subtitle}>{profile?.full_name || user?.email}</Text>
         </View>
-        <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
-          <Text style={styles.kpiValue}>{isLoading ? '-' : unreadMessages.length}</Text>
-          <Text style={styles.kpiLabel}>Messages</Text>
-        </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Your Profile</Text>
-        <View style={styles.infoCard}>
-          <Text style={styles.infoLabel}>Status</Text>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: '#34C759' }]} />
-            <Text style={styles.infoValue}>Available</Text>
+        <View style={styles.kpiRow}>
+          <View style={[styles.kpiCard, { borderLeftColor: '#AF52DE' }]}>
+            <Text style={styles.kpiValue}>{isLoading ? '-' : '0'}</Text>
+            <Text style={styles.kpiLabel}>Active Jobs</Text>
+          </View>
+          <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
+            <Text style={styles.kpiValue}>{isLoading ? '-' : unreadMessages.length}</Text>
+            <Text style={styles.kpiLabel}>Messages</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('SpecialistRegistration' as never)}
-        >
-          <Text style={styles.primaryButtonText}>Edit Profile</Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.actionsGrid}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Messaging')}>
-            <Text style={styles.actionIcon}>💬</Text>
-            <Text style={styles.actionLabel}>Messages</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('SpecialistDirectory')}>
-            <Text style={styles.actionIcon}>🔍</Text>
-            <Text style={styles.actionLabel}>Directory</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ProfileSettings')}>
-            <Text style={styles.actionIcon}>⚙️</Text>
-            <Text style={styles.actionLabel}>Settings</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Profile</Text>
+          <View style={styles.infoCard}>
+            <Text style={styles.infoLabel}>Status</Text>
+            <View style={styles.statusRow}>
+              <View style={[styles.statusDot, { backgroundColor: '#34C759' }]} />
+              <Text style={styles.infoValue}>Available</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handleEditProfile}
+          >
+            <Text style={styles.primaryButtonText}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={{ height: 20 }} />
-    </ScrollView>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleMessages}>
+              <Text style={styles.actionIcon}>💬</Text>
+              <Text style={styles.actionLabel}>Messages</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={handleDirectory}>
+              <Text style={styles.actionIcon}>🔍</Text>
+              <Text style={styles.actionLabel}>Directory</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionButton} onPress={handleSettings}>
+              <Text style={styles.actionIcon}>⚙️</Text>
+              <Text style={styles.actionLabel}>Settings</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={{ height: 20 }} />
+      </ScrollView>
+    </>
   );
 };
 

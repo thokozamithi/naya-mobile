@@ -2,63 +2,79 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useQueries';
+import { DashboardHeader } from '@/components/DashboardHeader';
 
 const ProfileScreen = ({ navigation }: any) => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, activeRole } = useAuth();
   const { profile, isLoading } = useUserProfile();
+
+  // Navigation handlers for header
+  const handleLogoPress = () => navigation.navigate('Home');
+  const handleRoleSwitch = () => navigation.navigate('RoleSelection');
+  const handleSignOut = () => { if (typeof signOut === 'function') { signOut(); } navigation.navigate('Home'); };
 
   const handleLogout = async () => {
     await signOut();
+    navigation.navigate('Home');
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
-      </View>
+    <>
+      <DashboardHeader
+        onLogoPress={handleLogoPress}
+        onRoleSwitch={handleRoleSwitch}
+        onSignOut={handleSignOut}
+        userName={user?.email}
+        role={activeRole}
+      />
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Profile</Text>
+        </View>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={user?.email || ''}
-          editable={false}
-        />
-      </View>
+        <View style={styles.card}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            value={user?.email || ''}
+            editable={false}
+          />
+        </View>
 
-      {profile && (
-        <>
-          <View style={styles.card}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              value={profile.full_name || ''}
-              editable={false}
-            />
-          </View>
+        {profile && (
+          <>
+            <View style={styles.card}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                value={profile.full_name || ''}
+                editable={false}
+              />
+            </View>
 
-          <View style={styles.card}>
-            <Text style={styles.label}>Phone</Text>
-            <TextInput
-              style={styles.input}
-              value={profile.phone || ''}
-              editable={false}
-            />
-          </View>
-        </>
-      )}
+            <View style={styles.card}>
+              <Text style={styles.label}>Phone</Text>
+              <TextInput
+                style={styles.input}
+                value={profile.phone || ''}
+                editable={false}
+              />
+            </View>
+          </>
+        )}
 
-      <TouchableOpacity
-        style={styles.editButton}
-        onPress={() => navigation.navigate('ProfileSettings')}
-      >
-        <Text style={styles.editButtonText}>Edit Profile</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('ProfileSettings')}
+        >
+          <Text style={styles.editButtonText}>Edit Profile</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Logout</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity style={styles.button} onPress={handleLogout}>
+          <Text style={styles.buttonText}>Logout</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </>
   );
 };
 

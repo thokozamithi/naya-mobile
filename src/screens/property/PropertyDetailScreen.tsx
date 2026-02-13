@@ -12,6 +12,7 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { usePropertyDetail } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
+import { DashboardHeader } from '@/components/DashboardHeader';
 
 interface RouteParams {
   propertyId: string;
@@ -22,6 +23,7 @@ export default function PropertyDetailScreen() {
   const navigation = useNavigation();
   const { propertyId } = (route.params as RouteParams) || {};
   const { activeRole } = useAuth();
+  const { signOut, user } = useAuth();
 
   const { property, units, isLoading, error } = usePropertyDetail(propertyId);
 
@@ -62,8 +64,21 @@ export default function PropertyDetailScreen() {
   const handleRequestMaintenance = () => {
     Alert.alert('Request Maintenance', 'This feature will be available soon');
   };
+  
+  // Navigation handlers for header
+  const handleLogoPress = () => navigation.navigate('Home');
+  const handleRoleSwitch = () => navigation.navigate('RoleSelection');
+  const handleSignOut = () => { if (typeof signOut === 'function') { signOut(); } navigation.navigate('Home'); };
 
   return (
+    <>
+      <DashboardHeader
+        onLogoPress={handleLogoPress}
+        onRoleSwitch={handleRoleSwitch}
+        onSignOut={handleSignOut}
+        userName={user?.email}
+        role={activeRole}
+      />
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => {
@@ -176,6 +191,7 @@ export default function PropertyDetailScreen() {
         </View>
       </View>
     </ScrollView>
+    </>
   );
 }
 

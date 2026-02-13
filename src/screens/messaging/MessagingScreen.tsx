@@ -16,9 +16,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useMessages } from '@/hooks/useData';
 import { supabase } from '@/services/supabase';
 import { formatTime } from '@/lib/utils';
+import { DashboardHeader } from '@/components/DashboardHeader';
 
-export default function MessagingScreen() {
-  const { user } = useAuth();
+export default function MessagingScreen({ navigation }: any) {
+  const { user, signOut, activeRole } = useAuth();
   const { data: messages = [], isLoading, refetch } = useMessages(user?.id);
   const [newMessage, setNewMessage] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -75,6 +76,11 @@ export default function MessagingScreen() {
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
   }, [conversations, selectedConversation]);
+
+  // Navigation handlers for header
+  const handleLogoPress = () => navigation?.navigate?.('Home');
+  const handleRoleSwitch = () => navigation?.navigate?.('RoleSelection');
+  const handleSignOut = () => { if (typeof signOut === 'function') { signOut(); } navigation?.navigate?.('Home'); };
 
   if (!user) {
     return (
@@ -219,32 +225,41 @@ export default function MessagingScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
-      </View>
-
-      {conversations.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={{ fontSize: 40, marginBottom: 12 }}>💬</Text>
-          <Text style={styles.emptyStateTitle}>No messages yet</Text>
-          <Text style={styles.emptyStateText}>
-            Start a conversation by contacting a specialist
-          </Text>
+    <>
+      <DashboardHeader
+        onLogoPress={handleLogoPress}
+        onRoleSwitch={handleRoleSwitch}
+        onSignOut={handleSignOut}
+        userName={user?.email}
+        role={activeRole}
+      />
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Messages</Text>
         </View>
-      ) : (
-        <FlatList
-          data={conversations}
-          keyExtractor={(item) => item.otherUserId}
-          renderItem={renderConversationItem}
-          initialNumToRender={15}
-          maxToRenderPerBatch={10}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#007AFF" />
-          }
-        />
-      )}
-    </View>
+
+        {conversations.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={{ fontSize: 40, marginBottom: 12 }}>💬</Text>
+            <Text style={styles.emptyStateTitle}>No messages yet</Text>
+            <Text style={styles.emptyStateText}>
+              Start a conversation by contacting a specialist
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={conversations}
+            keyExtractor={(item) => item.otherUserId}
+            renderItem={renderConversationItem}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#007AFF" />
+            }
+          />
+        )}
+      </View>
+    </>
   );
 }
 

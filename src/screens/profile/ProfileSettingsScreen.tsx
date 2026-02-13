@@ -15,11 +15,16 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/services/supabase';
+import { DashboardHeader } from '@/components/DashboardHeader';
 
 export default function ProfileSettingsScreen() {
   const navigation = useNavigation();
   const { user, roles, activeRole, switchRole, signOut, refreshRoles } = useAuth();
   const { subscription, isPro, isExpiringSoon } = useSubscription();
+  // Navigation handlers for header
+  const handleLogoPress = () => navigation.navigate('Home');
+  const handleRoleSwitch = () => navigation.navigate('RoleSelection');
+  const handleSignOut = () => { if (typeof signOut === 'function') { signOut(); } navigation.navigate('Home'); };
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -113,212 +118,41 @@ export default function ProfileSettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => {
-            // Navigate back to role-based dashboard
-            const roleMap: Record<string, string> = {
-              tenant: 'TenantApp',
-              landlord: 'LandlordApp',
-              builder: 'BuilderApp',
-              specialist: 'SpecialistApp',
-              employee: 'EmployeeApp',
-            };
-            const target = roleMap[activeRole as string] || 'TenantApp';
-            // Use navigate to top-level app stack
-            // @ts-ignore
-            navigation.navigate(target);
-          }}>
-            <Text style={styles.backLink}>← Back to Dashboard</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Profile Settings</Text>
-        </View>
-
-        {/* Profile Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Information</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <View style={styles.readOnlyInput}>
-              <Text style={styles.readOnlyText}>{user?.email}</Text>
-            </View>
+    <>
+      <DashboardHeader
+        onLogoPress={handleLogoPress}
+        onRoleSwitch={handleRoleSwitch}
+        onSignOut={handleSignOut}
+        userName={user?.email}
+        role={activeRole}
+      />
+      <SafeAreaView style={styles.container}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => {
+              // Navigate back to role-based dashboard
+              const roleMap: Record<string, string> = {
+                tenant: 'TenantApp',
+                landlord: 'LandlordApp',
+                builder: 'BuilderApp',
+                specialist: 'SpecialistApp',
+                employee: 'EmployeeApp',
+              };
+              const target = roleMap[activeRole as string] || 'TenantApp';
+              // Use navigate to top-level app stack
+              // @ts-ignore
+              navigation.navigate(target);
+            }}>
+              <Text style={styles.backLink}>← Back to Dashboard</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Profile Settings</Text>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your full name"
-              value={fullName}
-              onChangeText={setFullName}
-              editable={!saving}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your phone number"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              editable={!saving}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Bio</Text>
-            <TextInput
-              style={[styles.input, styles.bioInput]}
-              placeholder="Tell us about yourself"
-              value={bio}
-              onChangeText={setBio}
-              multiline
-              numberOfLines={4}
-              editable={!saving}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.primaryButton, saving && styles.buttonDisabled]}
-            onPress={handleSaveProfile}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Save Changes</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Roles Section */}
-        {roles.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Roles</Text>
-            <Text style={styles.sectionDescription}>
-              Switch between your roles to access different features
-            </Text>
-
-            {roles.map((role) => (
-              <TouchableOpacity
-                key={role}
-                style={[
-                  styles.roleCard,
-                  activeRole === role && styles.roleCardActive,
-                ]}
-                onPress={() => switchRole(role)}
-              >
-                <View style={styles.roleContent}>
-                  <Text style={[styles.roleName, activeRole === role && styles.roleNameActive]}>
-                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                  </Text>
-                  <Text style={styles.roleDescription}>
-                    {getRoleDescription(role)}
-                  </Text>
-                </View>
-                {activeRole === role && (
-                  <View style={styles.activeIndicator}>
-                    <Text style={styles.checkmark}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* Subscription Section */}
-        {subscription && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Subscription</Text>
-
-            <View style={styles.subscriptionCard}>
-              <View>
-                <Text style={styles.subscriptionPlan}>
-                  {subscription.plan.toUpperCase().replace('_', ' ')}
-                </Text>
-                <Text style={styles.subscriptionStatus}>
-                  {subscription.status}
-                  {isExpiringSoon && ' (Expiring Soon)'}
-                </Text>
-              </View>
-              {isPro && (
-                <View style={styles.proBadge}>
-                  <Text style={styles.proBadgeText}>PRO</Text>
-                </View>
-              )}
-            </View>
-
-            {subscription.expires_at && (
-              <View style={styles.expireInfo}>
-                <Text style={styles.expireLabel}>Expires:</Text>
-                <Text style={styles.expireDate}>
-                  {new Date(subscription.expires_at).toLocaleDateString()}
-                </Text>
-              </View>
-            )}
-
-            {isPro && (
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => Alert.alert('Manage Subscription', 'Subscription management will be available soon.')}
-              >
-                <Text style={styles.secondaryButtonText}>Manage Subscription</Text>
-              </TouchableOpacity>
-            )}
-            {!isPro && (
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => navigation.navigate('Upgrade' as never)}
-              >
-                <Text style={styles.buttonText}>Upgrade to Pro</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {/* Preferences Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-
-          <View style={styles.preferenceItem}>
-            <View>
-              <Text style={styles.preferenceName}>Push Notifications</Text>
-              <Text style={styles.preferenceDescription}>
-                Receive notifications about updates
-              </Text>
-            </View>
-            <Switch
-              value={notifications}
-              onValueChange={setNotifications}
-              trackColor={{ false: '#ccc', true: '#0066cc' }}
-            />
-          </View>
-        </View>
-
-        {/* Security Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Security</Text>
-
-          <TouchableOpacity style={styles.secondaryButton} onPress={handleChangePassword}>
-            <Text style={styles.secondaryButtonText}>Change Password</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Sign Out Section */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.dangerButton} onPress={handleSignOut}>
-            <Text style={styles.dangerButtonText}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.spacer} />
-      </ScrollView>
-    </SafeAreaView>
+          {/* ...existing code... */
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 }
 
