@@ -42,22 +42,23 @@ const LandlordDashboard = ({ navigation }: any) => {
         role={activeRole || undefined}
       />
       {/* Tab triggers */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        style={styles.tabBar}
-        contentContainerStyle={styles.tabBarContent}
-      >
-        {TABS.map(tab => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.tabBar}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.tabBarContent}
+        >
+          {TABS.map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+              onPress={() => setActiveTab(tab)}
+            >
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
       <ScrollView
         style={styles.container}
         refreshControl={
@@ -369,6 +370,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    flexGrow: 0,
+    flexShrink: 0,
   },
   tabBarContent: {
     flexDirection: 'row',
