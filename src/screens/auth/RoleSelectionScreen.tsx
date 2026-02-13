@@ -17,8 +17,20 @@ const RoleSelectionScreen = ({ navigation }: any) => {
   const handleRoleSelect = async (roleId: string) => {
     setLoading(true);
     try {
-      await addRole(roleId as any);
-      await switchRole(roleId as any);
+      const { error: addError } = await addRole(roleId as any);
+      if (addError) throw addError;
+      // switchRole is synchronous (updates context) but we'll await a tick to let context propagate
+      switchRole(roleId as any);
+      // Navigate into the role's app stack so back behavior matches spec
+      const roleMap: Record<string, string> = {
+        tenant: 'TenantApp',
+        landlord: 'LandlordApp',
+        builder: 'BuilderApp',
+        specialist: 'SpecialistApp',
+        employee: 'EmployeeApp',
+      };
+      const target = roleMap[roleId] || 'TenantApp';
+      navigation.navigate(target);
     } catch (err: any) {
       Alert.alert('Role Error', err?.message || 'Could not set role');
     } finally {
