@@ -253,6 +253,13 @@ const LandlordDashboard = ({ navigation }: any) => {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.actionButton}
+                onPress={() => navigation.navigate('ThreadMessaging')}
+              >
+                <Text style={styles.actionIcon}>🧵</Text>
+                <Text style={styles.actionLabel}>Team Messages</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
                 onPress={() => navigation.navigate('SpecialistDirectory')}
               >
                 <Text style={styles.actionIcon}>🔍</Text>

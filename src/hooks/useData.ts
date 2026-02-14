@@ -1114,6 +1114,7 @@ export const useAddProjectUpdate = () => {
 
 export const useAssignEmployee = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async ({ projectId, employeeId, role }: {
@@ -1135,12 +1136,101 @@ export const useAssignEmployee = () => {
         console.error('[useAssignEmployee] Error:', error);
         throw error;
       }
+      // Best-effort: create a project thread when an employee with a user account is assigned
+      try {
+        if (user?.id) {
+          const { data: employee } = await supabase
+            .from('employees')
+            .select('user_id, full_name')
+            .eq('id', employeeId)
+            .single();
+
+          if (employee?.user_id) {
+            const { data: project } = await supabase
+              .from('projects')
+              .select('title, landlord_id')
+              .eq('id', projectId)
+              .single();
+
+            if (project?.landlord_id) {
+              const { data: existingThreads } = await supabase
+                .from('message_threads')
+                .select('id')
+                .eq('project_id', projectId);
+
+              let hasThread = false;
+              if (existingThreads && existingThreads.length > 0) {
+                const threadIds = existingThreads.map((t: any) => t.id);
+                const { data: participants } = await supabase
+                  .from('thread_participants')
+                  .select('thread_id, user_id')
+                  .in('thread_id', threadIds);
+
+                if (participants) {
+                  const participantMap = new Map<string, Set<string>>();
+                  participants.forEach((p: any) => {
+                    if (!participantMap.has(p.thread_id)) {
+                      participantMap.set(p.thread_id, new Set());
+                    }
+                    participantMap.get(p.thread_id)!.add(p.user_id);
+                  });
+
+                  hasThread = threadIds.some((id: string) => {
+                    const set = participantMap.get(id);
+                    return !!set && set.has(project.landlord_id) && set.has(employee.user_id);
+                  });
+                }
+              }
+
+              if (!hasThread) {
+                const { data: thread, error: threadError } = await supabase
+                  .from('message_threads')
+                  .insert({
+                    subject: `Project: ${project.title}`,
+                    project_id: projectId,
+                  })
+                  .select()
+                  .single();
+
+                if (!threadError && thread) {
+                  const participantInserts = [
+                    { thread_id: thread.id, user_id: project.landlord_id, role: 'owner' },
+                    { thread_id: thread.id, user_id: employee.user_id, role: 'member' },
+                  ];
+
+                  await supabase
+                    .from('thread_participants')
+                    .insert(participantInserts);
+
+                  const messageBody = `Assignment created: ${employee.full_name || 'Employee'} joined ${project.title}.`;
+                  await supabase
+                    .from('thread_messages')
+                    .insert({
+                      thread_id: thread.id,
+                      sender_id: user.id,
+                      body: messageBody,
+                    });
+
+                  await supabase
+                    .from('message_threads')
+                    .update({ last_message_at: new Date().toISOString() })
+                    .eq('id', thread.id);
+                }
+              }
+            }
+          }
+        }
+      } catch (threadError) {
+        console.warn('[useAssignEmployee] Thread creation skipped:', threadError);
+      }
+
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['project', data.project_id] });
       queryClient.invalidateQueries({ queryKey: ['landlord-projects'] });
       queryClient.invalidateQueries({ queryKey: ['employee-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
     },
   });
 };
