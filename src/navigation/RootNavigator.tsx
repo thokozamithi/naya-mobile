@@ -24,6 +24,8 @@ import EditPropertyScreen from '@/screens/property/EditPropertyScreen';
 import EditUnitScreen from '@/screens/property/EditUnitScreen';
 import PropertyPaymentsScreen from '@/screens/property/PropertyPaymentsScreen';
 import ProjectDetailScreen from '@/screens/project/ProjectDetailScreen';
+import CreateProjectScreen from '@/screens/project/CreateProjectScreen';
+import AddEmployeeScreen from '@/screens/project/AddEmployeeScreen';
 import MessagingScreen from '@/screens/messaging/MessagingScreen';
 import CreateMaintenanceRequestScreen from '@/screens/maintenance/CreateMaintenanceRequestScreen';
 import MaintenanceRequestDetailScreen from '@/screens/maintenance/MaintenanceRequestDetailScreen';

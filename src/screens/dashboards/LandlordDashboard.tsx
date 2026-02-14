@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, u
 import { useState as useReactState } from 'react';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { useAuth } from '@/hooks/useAuth';
-import { useProperties, useMaintenanceRequests, useLandlordConversations } from '@/hooks/useData';
+import { useProperties, useMaintenanceRequests, useLandlordConversations, useLandlordProjects, useLandlordEmployees } from '@/hooks/useData';
 import { useUserProfile } from '@/hooks/useQueries';
 import { formatTime } from '@/lib/utils';
 
 const TABS = [
-  'Overview', 'Properties', 'Maintenance', 'Messages'
+  'Overview', 'Properties', 'Projects', 'Maintenance', 'Messages'
 ];
 
 const LandlordDashboard = ({ navigation }: any) => {
@@ -18,6 +18,8 @@ const LandlordDashboard = ({ navigation }: any) => {
   const { properties = [], isLoading: propsLoading } = useProperties();
   const { data: requests = [], isLoading: reqLoading } = useMaintenanceRequests(user?.id);
   const { data: conversations = [], isLoading: convLoading } = useLandlordConversations();
+  const { data: projects = [], isLoading: projLoading } = useLandlordProjects();
+  const { data: employees = [], isLoading: empLoading } = useLandlordEmployees();
   const { profile } = useUserProfile();
   const [refreshing, setRefreshing] = useState(false);
   const { width } = useWindowDimensions();
@@ -32,8 +34,29 @@ const LandlordDashboard = ({ navigation }: any) => {
   const pendingRequests = requests.filter((r: any) => r.status === 'pending' || r.status === 'open');
   const totalUnits = properties.reduce((sum: number, p: any) => sum + (p.total_units || 0), 0);
 
-  const isLoading = propsLoading || reqLoading || convLoading;
+  const isLoading = propsLoading || reqLoading || convLoading || projLoading;
   const unreadMessageCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+  const activeProjectCount = projects.filter((p: any) => p.status === 'in_progress').length;
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return '#34C759';
+      case 'in_progress': return '#FF9500';
+      case 'pending': return '#5AC8FA';
+      case 'on_hold': return '#FF3B30';
+      default: return '#999';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return '#FF3B30';
+      case 'high': return '#FF9500';
+      case 'medium': return '#5AC8FA';
+      case 'low': return '#34C759';
+      default: return '#999';
+    }
+  };
 
   return (
     <View style={styles.root}>
@@ -111,9 +134,9 @@ const LandlordDashboard = ({ navigation }: any) => {
             </View>
             <View style={[styles.kpiCard, { borderLeftColor: '#AF52DE' }]}>
               <Text style={styles.kpiValue}>
-                {isLoading ? '-' : requests.length}
+                {isLoading ? '-' : projects.length}
               </Text>
-              <Text style={styles.kpiLabel}>All Requests</Text>
+              <Text style={styles.kpiLabel}>Projects</Text>
             </View>
           </View>
 
@@ -216,6 +239,13 @@ const LandlordDashboard = ({ navigation }: any) => {
             <View style={styles.actionsGrid}>
               <TouchableOpacity
                 style={styles.actionButton}
+                onPress={() => navigation.navigate('CreateProject')}
+              >
+                <Text style={styles.actionIcon}>📋</Text>
+                <Text style={styles.actionLabel}>New Project</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
                 onPress={() => navigation.navigate('Messaging')}
               >
                 <Text style={styles.actionIcon}>💬</Text>
@@ -227,13 +257,6 @@ const LandlordDashboard = ({ navigation }: any) => {
               >
                 <Text style={styles.actionIcon}>🔍</Text>
                 <Text style={styles.actionLabel}>Specialists</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => navigation.navigate('ProfileSettings')}
-              >
-                <Text style={styles.actionIcon}>⚙️</Text>
-                <Text style={styles.actionLabel}>Settings</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -294,6 +317,128 @@ const LandlordDashboard = ({ navigation }: any) => {
                   </View>
                   <Text style={styles.chevron}>›</Text>
                 </TouchableOpacity>
+              ))
+            )}
+          </View>
+        </>
+      )}
+
+      {/* Projects Tab */}
+      {activeTab === 'Projects' && (
+        <>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Projects ({projects.length})</Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => navigation.navigate('CreateProject')}
+              >
+                <Text style={styles.addButtonText}>+ New Project</Text>
+              </TouchableOpacity>
+            </View>
+
+            {projLoading ? (
+              [1, 2, 3].map((i) => (
+                <View key={i} style={styles.skeletonCard}>
+                  <View style={[styles.skeletonLine, { width: '60%', height: 16 }]} />
+                  <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
+                </View>
+              ))
+            ) : projects.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>📋</Text>
+                <Text style={styles.emptyText}>No projects yet</Text>
+                <Text style={styles.emptySubtext}>Create your first project to track work</Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate('CreateProject')}
+                >
+                  <Text style={styles.emptyButtonText}>Create Project</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              projects.map((project: any) => (
+                <TouchableOpacity
+                  key={project.id}
+                  style={styles.propertyCard}
+                  onPress={() => navigation.navigate('ProjectDetail', { projectId: project.id })}
+                >
+                  <View style={styles.propertyCardContent}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <View style={[styles.badge, { backgroundColor: getStatusColor(project.status) + '22' }]}>
+                        <Text style={[styles.badgeText, { color: getStatusColor(project.status) }]}>
+                          {project.status.replace('_', ' ')}
+                        </Text>
+                      </View>
+                      <View style={[styles.badge, { backgroundColor: getPriorityColor(project.priority) + '22' }]}>
+                        <Text style={[styles.badgeText, { color: getPriorityColor(project.priority) }]}>
+                          {project.priority}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.propertyName}>{project.title}</Text>
+                    {project.property?.name && (
+                      <Text style={styles.propertyAddress}>📍 {project.property.name}</Text>
+                    )}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 8 }}>
+                      <View style={{ flex: 1, height: 4, backgroundColor: '#e0e0e0', borderRadius: 2, overflow: 'hidden' }}>
+                        <View style={{ height: '100%', width: `${project.progress}%`, backgroundColor: getStatusColor(project.status), borderRadius: 2 }} />
+                      </View>
+                      <Text style={{ fontSize: 12, color: '#666', fontWeight: '600' }}>{project.progress}%</Text>
+                    </View>
+                    {project.assignments && project.assignments.length > 0 && (
+                      <Text style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+                        👤 {project.assignments.map((a: any) => a.employee?.full_name || 'Unassigned').join(', ')}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+
+          {/* Employees Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Team ({employees.length})</Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => navigation.navigate('AddEmployee')}
+              >
+                <Text style={styles.addButtonText}>+ Add Employee</Text>
+              </TouchableOpacity>
+            </View>
+
+            {employees.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>👥</Text>
+                <Text style={styles.emptyText}>No team members</Text>
+                <Text style={styles.emptySubtext}>Add employees to assign to projects</Text>
+              </View>
+            ) : (
+              employees.map((emp: any) => (
+                <View key={emp.id} style={styles.requestCard}>
+                  <View style={{
+                    width: 36, height: 36, borderRadius: 18, backgroundColor: '#5AC8FA',
+                    alignItems: 'center', justifyContent: 'center', marginRight: 12
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
+                      {(emp.full_name || '?').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.requestContent}>
+                    <Text style={styles.requestTitle}>{emp.full_name}</Text>
+                    <Text style={styles.requestMeta}>{emp.email || emp.phone || 'No contact'}</Text>
+                    <View style={[styles.statusBadge, {
+                      backgroundColor: emp.status === 'active' ? '#E8F8EE' : '#FFF4E5'
+                    }]}>
+                      <Text style={[styles.statusBadgeText, {
+                        color: emp.status === 'active' ? '#34C759' : '#FF9500'
+                      }]}>{emp.status}</Text>
+                    </View>
+                  </View>
+                </View>
               ))
             )}
           </View>
