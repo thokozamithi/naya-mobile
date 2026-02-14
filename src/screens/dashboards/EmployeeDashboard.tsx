@@ -1,13 +1,14 @@
 import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
-import { useEmployeeProjects } from '@/hooks/useData';
+import { useEmployeeProjects, useAssignedMaintenanceRequests } from '@/hooks/useData';
 import { useUserProfile } from '@/hooks/useQueries';
 import { DashboardHeader } from '@/components/DashboardHeader';
 
 const EmployeeDashboard = ({ navigation }: any) => {
   const { user, signOut, activeRole } = useAuth();
   const { data: projects = [], isLoading: projLoading, refetch } = useEmployeeProjects();
+  const { data: maintRequests = [], isLoading: maintLoading } = useAssignedMaintenanceRequests();
   const { profile } = useUserProfile();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -19,7 +20,8 @@ const EmployeeDashboard = ({ navigation }: any) => {
 
   const activeProjects = projects.filter((p: any) => p.status === 'in_progress');
   const pendingProjects = projects.filter((p: any) => p.status === 'pending');
-  const isLoading = projLoading;
+  const activeMaintRequests = maintRequests.filter((r: any) => !['completed', 'cancelled'].includes(r.status));
+  const isLoading = projLoading || maintLoading;
 
   // Navigation handlers for header
   const handleLogoPress = () => navigation.navigate('Home');
@@ -69,15 +71,15 @@ const EmployeeDashboard = ({ navigation }: any) => {
         <View style={styles.kpiRow}>
           <View style={[styles.kpiCard, { borderLeftColor: '#FF9500' }]}>
             <Text style={styles.kpiValue}>{isLoading ? '-' : activeProjects.length}</Text>
-            <Text style={styles.kpiLabel}>In Progress</Text>
+            <Text style={styles.kpiLabel}>Active Projects</Text>
           </View>
-          <View style={[styles.kpiCard, { borderLeftColor: '#5AC8FA' }]}>
-            <Text style={styles.kpiValue}>{isLoading ? '-' : pendingProjects.length}</Text>
-            <Text style={styles.kpiLabel}>Pending</Text>
+          <View style={[styles.kpiCard, { borderLeftColor: '#FF3B30' }]}>
+            <Text style={styles.kpiValue}>{isLoading ? '-' : activeMaintRequests.length}</Text>
+            <Text style={styles.kpiLabel}>Work Orders</Text>
           </View>
           <View style={[styles.kpiCard, { borderLeftColor: '#34C759' }]}>
-            <Text style={styles.kpiValue}>{isLoading ? '-' : projects.length}</Text>
-            <Text style={styles.kpiLabel}>Total Projects</Text>
+            <Text style={styles.kpiValue}>{isLoading ? '-' : projects.length + maintRequests.length}</Text>
+            <Text style={styles.kpiLabel}>Total Tasks</Text>
           </View>
         </View>
 
@@ -129,6 +131,46 @@ const EmployeeDashboard = ({ navigation }: any) => {
           )}
         </View>
 
+        {/* Assigned Maintenance Requests */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Assigned Work Orders</Text>
+          {maintLoading ? (
+            [1, 2].map((i) => (
+              <View key={i} style={styles.skeletonCard}>
+                <View style={[styles.skeletonLine, { width: '60%', height: 14 }]} />
+                <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
+              </View>
+            ))
+          ) : maintRequests.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyIcon}>🔧</Text>
+              <Text style={styles.emptyText}>No work orders assigned</Text>
+              <Text style={styles.emptySubtext}>Maintenance requests assigned to you will appear here</Text>
+            </View>
+          ) : (
+            maintRequests.slice(0, 10).map((request: any) => (
+              <TouchableOpacity
+                key={request.id}
+                style={styles.taskCard}
+                onPress={() => navigation.navigate('MaintenanceRequestDetail', { request })}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.priorityDot, { backgroundColor: request.priority === 'high' ? '#FF3B30' : request.priority === 'medium' ? '#FF9500' : '#34C759' }]} />
+                <View style={styles.taskContent}>
+                  <Text style={styles.taskTitle}>{request.title}</Text>
+                  <Text style={styles.taskMeta}>
+                    {request.work_order_code} • {request.status.replace('_', ' ')}
+                  </Text>
+                  <Text style={styles.taskSubText} numberOfLines={1}>
+                    {request.description}
+                  </Text>
+                </View>
+                <Text style={styles.chevron}>›</Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -170,6 +212,7 @@ const styles = StyleSheet.create({
   taskContent: { flex: 1 },
   taskTitle: { fontSize: 14, fontWeight: '600', color: '#000' },
   taskMeta: { fontSize: 12, color: '#666', marginTop: 2, textTransform: 'capitalize' },
+  taskSubText: { fontSize: 12, color: '#999', marginTop: 2 },
   projectStatusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   statusBadgeText: { fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },

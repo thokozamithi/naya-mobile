@@ -761,6 +761,50 @@ export const useEmployees = () => {
   return { data: result.data, isLoading: result.isLoading, error: result.error };
 };
 
+// Employee assigned maintenance requests
+export const useAssignedMaintenanceRequests = () => {
+  const { user, activeRole } = useAuth();
+
+  return useQuery({
+    queryKey: ['assigned-maintenance-requests', user?.id],
+    queryFn: async () => {
+      if (!user?.id || activeRole !== 'employee') return [];
+
+      // First get the employee record by user_id
+      const { data: employee, error: empError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (empError) {
+        console.error('[useAssignedMaintenanceRequests] Error fetching employee:', empError);
+        throw empError;
+      }
+
+      if (!employee?.id) return [];
+
+      // Then get all maintenance requests assigned to this employee
+      const { data, error } = await supabase
+        .from('maintenance_requests')
+        .select(`
+          *,
+          unit:units(unit_name),
+          tenant:tenants(full_name, email)
+        `)
+        .eq('assigned_employee_id', employee.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[useAssignedMaintenanceRequests] Error:', error);
+        throw error;
+      }
+      return data || [];
+    },
+    enabled: !!user?.id && activeRole === 'employee',
+  });
+};
+
 // =============================================
 // MUTATIONS
 // =============================================
