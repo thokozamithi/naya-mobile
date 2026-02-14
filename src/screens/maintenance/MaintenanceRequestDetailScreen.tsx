@@ -41,6 +41,8 @@ export default function MaintenanceRequestDetailScreen() {
 
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const availableEmployees = employees.filter((employee: any) => !!employee?.id);
+
   if (!request) {
     return (
       <View style={styles.container}>
@@ -79,9 +81,30 @@ export default function MaintenanceRequestDetailScreen() {
     }
   };
 
-  const handleAssignEmployee = async (employeeId: string | null) => {
+  const showAssignmentError = (error: any) => {
+    const isMissingProfile =
+      error?.message?.includes('Employee profile missing') ||
+      error?.code === '23503' ||
+      error?.details?.includes?.('assigned_employee_id') ||
+      error?.message?.includes?.('assigned_employee_id');
+    Alert.alert('Error', isMissingProfile ? 'Employee profile missing. Please contact admin.' : (error?.message || 'Failed to assign employee'));
+  };
+
+  const handleAssignEmployee = async (employeeId: string) => {
     if (activeRole !== 'landlord' && activeRole !== 'employee') {
       Alert.alert('Permission Denied', 'Only landlords and employees can assign requests');
+      return;
+    }
+
+    const normalizedId = employeeId.trim();
+    if (!normalizedId) {
+      Alert.alert('Error', 'Employee profile missing. Please contact admin.');
+      return;
+    }
+
+    const employee = availableEmployees.find((e: any) => e.id === normalizedId);
+    if (!employee) {
+      Alert.alert('Error', 'Employee profile missing. Please contact admin.');
       return;
     }
 
@@ -89,13 +112,10 @@ export default function MaintenanceRequestDetailScreen() {
       setIsUpdating(true);
       await updateRequest.mutateAsync({
         id: request.id,
-        assigned_employee_id: employeeId,
+        assigned_employee_id: normalizedId,
       });
 
-      const employee = employees.find((e: any) => e.id === employeeId);
-      const message = employeeId
-        ? `Request assigned to ${employee?.full_name || 'employee'}`
-        : 'Employee assignment removed';
+      const message = `Request assigned to ${employee?.full_name || 'employee'}`;
 
       Alert.alert('Success', message, [
         {
@@ -105,7 +125,34 @@ export default function MaintenanceRequestDetailScreen() {
       ]);
     } catch (error: any) {
       console.error('Error assigning employee:', error);
-      Alert.alert('Error', error.message || 'Failed to assign employee');
+      showAssignmentError(error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUnassignEmployee = async () => {
+    if (activeRole !== 'landlord' && activeRole !== 'employee') {
+      Alert.alert('Permission Denied', 'Only landlords and employees can assign requests');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      await updateRequest.mutateAsync({
+        id: request.id,
+        assigned_employee_id: null,
+      });
+
+      Alert.alert('Success', 'Employee assignment removed', [
+        {
+          text: 'OK',
+          onPress: () => navigation.goBack(),
+        },
+      ]);
+    } catch (error: any) {
+      console.error('Error unassigning employee:', error);
+      showAssignmentError(error);
     } finally {
       setIsUpdating(false);
     }
@@ -117,20 +164,20 @@ export default function MaintenanceRequestDetailScreen() {
       return;
     }
 
-    if (employees.length === 0) {
+    if (availableEmployees.length === 0) {
       Alert.alert('No Employees', 'No employees available to assign. Add employees from user management.');
       return;
     }
 
     const options = [
-      ...employees.map((employee: any) => ({
+      ...availableEmployees.map((employee: any) => ({
         text: employee.full_name || employee.email,
         onPress: () => handleAssignEmployee(employee.id),
       })),
       {
         text: 'Unassign',
         style: 'destructive' as const,
-        onPress: () => handleAssignEmployee(null),
+        onPress: () => handleUnassignEmployee(),
       },
       {
         text: 'Cancel',
@@ -249,8 +296,8 @@ export default function MaintenanceRequestDetailScreen() {
           <View style={styles.section}>
             <Text style={styles.label}>Assigned To</Text>
             <Text style={styles.value}>
-              {employees.find((e: any) => e.id === request.assigned_employee_id)?.full_name ||
-                employees.find((e: any) => e.id === request.assigned_employee_id)?.email ||
+              {availableEmployees.find((e: any) => e.id === request.assigned_employee_id)?.full_name ||
+                availableEmployees.find((e: any) => e.id === request.assigned_employee_id)?.email ||
                 `Employee ID: ${request.assigned_employee_id}`}
             </Text>
           </View>

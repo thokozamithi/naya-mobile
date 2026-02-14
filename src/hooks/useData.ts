@@ -917,17 +917,87 @@ export const useCreateMaintenanceRequest = () => {
   });
 };
 
+const resolveAssignedEmployeeId = async (
+  employeeId: string | null | undefined,
+  landlordId: string | undefined,
+  activeRole: string | null
+) => {
+  if (employeeId === null) return null;
+  if (employeeId === undefined) {
+    throw new Error('Employee profile missing. Please contact admin.');
+  }
+
+  const normalizedId = typeof employeeId === 'string' ? employeeId.trim() : '';
+  if (!normalizedId) {
+    throw new Error('Employee profile missing. Please contact admin.');
+  }
+
+  const { data: employeeById, error: employeeByIdError } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('id', normalizedId)
+    .maybeSingle();
+
+  if (employeeByIdError) {
+    console.error('[resolveAssignedEmployeeId] Lookup by id failed:', employeeByIdError);
+  }
+  if (employeeById?.id) return employeeById.id;
+
+  const { data: employeeByUserId, error: employeeByUserIdError } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('user_id', normalizedId)
+    .maybeSingle();
+
+  if (employeeByUserIdError) {
+    console.error('[resolveAssignedEmployeeId] Lookup by user_id failed:', employeeByUserIdError);
+  }
+  if (employeeByUserId?.id) return employeeByUserId.id;
+
+  if (activeRole === 'landlord' && landlordId) {
+    const { data: createdEmployee, error: createError } = await supabase
+      .from('employees')
+      .insert({
+        user_id: normalizedId,
+        landlord_id: landlordId,
+        full_name: '',
+        email: null,
+        phone: null,
+        status: 'active',
+      })
+      .select('id')
+      .single();
+
+    if (createError) {
+      console.error('[resolveAssignedEmployeeId] Auto-create failed:', createError);
+    }
+
+    if (createdEmployee?.id) return createdEmployee.id;
+  }
+
+  throw new Error('Employee profile missing. Please contact admin.');
+};
+
 export const useUpdateMaintenanceRequest = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<MaintenanceRequest> & { id: string }) => {
       console.log('Updating maintenance request:', { id, updates });
+
+      const normalizedUpdates = { ...updates } as Partial<MaintenanceRequest>;
+      if (Object.prototype.hasOwnProperty.call(updates, 'assigned_employee_id')) {
+        normalizedUpdates.assigned_employee_id = await resolveAssignedEmployeeId(
+          updates.assigned_employee_id,
+          user?.id,
+          activeRole
+        );
+      }
       
       const { data, error } = await supabase
         .from('maintenance_requests')
-        .update(updates)
+        .update(normalizedUpdates)
         .eq('id', id)
         .select()
         .single();
