@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/services/supabase';
 import { DashboardHeader } from '@/components/DashboardHeader';
+import * as Clipboard from 'expo-clipboard';
 
 export default function ProfileSettingsScreen() {
   const navigation = useNavigation<any>();
@@ -32,10 +33,56 @@ export default function ProfileSettingsScreen() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [generatingCode, setGeneratingCode] = useState(false);
 
   useEffect(() => {
     loadUserProfile();
   }, [user]);
+
+  const handleCopy = async (value: string, label: string) => {
+    if (!value) return;
+    try {
+      await Clipboard.setStringAsync(value);
+      Alert.alert('Copied', `${label} copied to clipboard.`);
+    } catch (error) {
+      console.error('Clipboard error:', error);
+      Alert.alert('Error', 'Unable to copy to clipboard.');
+    }
+  };
+
+  const handleGenerateLandlordCode = async () => {
+    if (!user?.id) return;
+    setGeneratingCode(true);
+    try {
+      const { data: code, error: codeError } = await supabase
+        .rpc('generate_landlord_code');
+
+      if (codeError) throw codeError;
+      if (!code) throw new Error('Failed to generate landlord code.');
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          landlord_code: code,
+          full_name: fullName || null,
+          email: user.email || null,
+          phone: phone || null,
+          bio: bio || null,
+        }, { onConflict: 'id' })
+        .select()
+        .maybeSingle();
+
+      if (updateError) throw updateError;
+      setLandlordCode(code);
+      Alert.alert('Landlord Code', 'Your landlord code has been generated.');
+    } catch (error: any) {
+      console.error('Landlord code error:', error);
+      Alert.alert('Error', error?.message || 'Unable to generate landlord code.');
+    } finally {
+      setGeneratingCode(false);
+    }
+  };
 
   const loadUserProfile = async () => {
     if (!user) return;
@@ -155,13 +202,33 @@ export default function ProfileSettingsScreen() {
                 </Text>
               </View>
             </View>
-            {landlordCode ? (
+            {activeRole === 'landlord' ? (
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Landlord Code</Text>
                 <View style={styles.readOnlyInput}>
-                  <Text style={styles.readOnlyText} selectable>
-                    {landlordCode}
-                  </Text>
+                  <View style={styles.readOnlyRow}>
+                    <Text style={styles.readOnlyText} selectable>
+                      {landlordCode || 'Not generated yet'}
+                    </Text>
+                    {landlordCode ? (
+                      <TouchableOpacity
+                        style={styles.copyButton}
+                        onPress={() => handleCopy(landlordCode, 'Landlord code')}
+                      >
+                        <Text style={styles.copyButtonText}>Copy</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.copyButton, generatingCode && styles.buttonDisabled]}
+                        onPress={handleGenerateLandlordCode}
+                        disabled={generatingCode}
+                      >
+                        <Text style={styles.copyButtonText}>
+                          {generatingCode ? 'Generating...' : 'Generate'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
               </View>
             ) : null}
@@ -366,9 +433,27 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: '#f5f5f5',
   },
+  readOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
   readOnlyText: {
     fontSize: 16,
     color: '#666',
+    flex: 1,
+  },
+  copyButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#0066cc',
+  },
+  copyButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   primaryButton: {
     backgroundColor: '#0066cc',
