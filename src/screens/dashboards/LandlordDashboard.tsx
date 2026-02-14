@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, u
 import { useState as useReactState } from 'react';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { useAuth } from '@/hooks/useAuth';
-import { useProperties, useMaintenanceRequests } from '@/hooks/useData';
+import { useProperties, useMaintenanceRequests, useLandlordConversations } from '@/hooks/useData';
 import { useUserProfile } from '@/hooks/useQueries';
+import { formatTime } from '@/lib/utils';
 
 const TABS = [
   'Overview', 'Properties', 'Maintenance', 'Messages'
@@ -16,6 +17,7 @@ const LandlordDashboard = ({ navigation }: any) => {
   const { user } = useAuth();
   const { properties = [], isLoading: propsLoading } = useProperties();
   const { data: requests = [], isLoading: reqLoading } = useMaintenanceRequests(user?.id);
+  const { data: conversations = [], isLoading: convLoading } = useLandlordConversations();
   const { profile } = useUserProfile();
   const [refreshing, setRefreshing] = useState(false);
   const { width } = useWindowDimensions();
@@ -30,7 +32,8 @@ const LandlordDashboard = ({ navigation }: any) => {
   const pendingRequests = requests.filter((r: any) => r.status === 'pending' || r.status === 'open');
   const totalUnits = properties.reduce((sum: number, p: any) => sum + (p.total_units || 0), 0);
 
-  const isLoading = propsLoading || reqLoading;
+  const isLoading = propsLoading || reqLoading || convLoading;
+  const unreadMessageCount = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return (
     <View style={styles.root}>
@@ -191,11 +194,14 @@ const LandlordDashboard = ({ navigation }: any) => {
                   onPress={() => navigation.navigate('MaintenanceRequestDetail', { request: req })}
                 >
                   <View style={[styles.priorityDot, {
-                    backgroundColor: req.priority === 'high' ? '#FF3B30' :
+                    backgroundColor: req.priority === 'emergency' || req.priority === 'high' ? '#FF3B30' :
                       req.priority === 'medium' ? '#FF9500' : '#34C759'
                   }]} />
                   <View style={styles.requestContent}>
                     <Text style={styles.requestTitle}>{req.title}</Text>
+                    <Text style={styles.requestMeta}>
+                      {req.unit?.unit_name || 'No unit'} • {req.tenant?.full_name || req.tenant?.email || 'Unknown tenant'}
+                    </Text>
                     <Text style={styles.requestStatus}>{req.status}</Text>
                   </View>
                   <Text style={styles.chevron}>›</Text>
@@ -310,7 +316,7 @@ const LandlordDashboard = ({ navigation }: any) => {
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyIcon}>🔧</Text>
                 <Text style={styles.emptyText}>No maintenance requests</Text>
-                <Text style={styles.emptySubtext}>Requests will appear here when created</Text>
+                <Text style={styles.emptySubtext}>Requests from tenants will appear here</Text>
               </View>
             ) : (
               requests.map((req: any) => (
@@ -320,12 +326,26 @@ const LandlordDashboard = ({ navigation }: any) => {
                   onPress={() => navigation.navigate('MaintenanceRequestDetail', { request: req })}
                 >
                   <View style={[styles.priorityDot, {
-                    backgroundColor: req.priority === 'high' ? '#FF3B30' :
+                    backgroundColor: req.priority === 'emergency' || req.priority === 'high' ? '#FF3B30' :
                       req.priority === 'medium' ? '#FF9500' : '#34C759'
                   }]} />
                   <View style={styles.requestContent}>
                     <Text style={styles.requestTitle}>{req.title}</Text>
-                    <Text style={styles.requestStatus}>{req.status}</Text>
+                    <Text style={styles.requestMeta}>
+                      {req.unit?.unit_name || 'No unit'} • {req.tenant?.full_name || req.tenant?.email || 'Unknown tenant'}
+                    </Text>
+                    <View style={styles.requestStatusRow}>
+                      <View style={[styles.statusBadge, {
+                        backgroundColor: req.status === 'completed' ? '#E8F8EE' : 
+                          req.status === 'in_progress' ? '#FFF4E5' : '#F0F0F0'
+                      }]}>
+                        <Text style={[styles.statusBadgeText, {
+                          color: req.status === 'completed' ? '#34C759' : 
+                            req.status === 'in_progress' ? '#FF9500' : '#666'
+                        }]}>{req.status.replace('_', ' ')}</Text>
+                      </View>
+                      <Text style={styles.requestDate}>{formatTime(req.created_at)}</Text>
+                    </View>
                   </View>
                   <Text style={styles.chevron}>›</Text>
                 </TouchableOpacity>
@@ -339,18 +359,58 @@ const LandlordDashboard = ({ navigation }: any) => {
       {activeTab === 'Messages' && (
         <>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Messages</Text>
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyText}>Messages coming soon</Text>
-              <Text style={styles.emptySubtext}>Direct messaging will be available in a future update</Text>
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={() => navigation.navigate('Messaging')}
-              >
-                <Text style={styles.emptyButtonText}>Go to Messages</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.sectionTitle}>
+              Conversations {unreadMessageCount > 0 && `(${unreadMessageCount} unread)`}
+            </Text>
+            {convLoading ? (
+              [1, 2, 3].map((i) => (
+                <View key={i} style={styles.skeletonCard}>
+                  <View style={[styles.skeletonLine, { width: '50%', height: 14 }]} />
+                  <View style={[styles.skeletonLine, { width: '70%', height: 12, marginTop: 8 }]} />
+                </View>
+              ))
+            ) : conversations.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>💬</Text>
+                <Text style={styles.emptyText}>No messages yet</Text>
+                <Text style={styles.emptySubtext}>Messages from tenants will appear here</Text>
+              </View>
+            ) : (
+              conversations.map((conv: any) => (
+                <TouchableOpacity
+                  key={conv.id}
+                  style={styles.conversationCard}
+                  onPress={() => navigation.navigate('Messaging', { conversationId: conv.id, tenantId: conv.tenantId })}
+                >
+                  <View style={styles.conversationAvatar}>
+                    <Text style={styles.conversationAvatarText}>
+                      {conv.propertyName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.conversationContent}>
+                    <View style={styles.conversationHeader}>
+                      <Text style={styles.conversationProperty} numberOfLines={1}>
+                        {conv.propertyName}
+                      </Text>
+                      <Text style={styles.conversationTime}>
+                        {formatTime(conv.lastMessage.created_at)}
+                      </Text>
+                    </View>
+                    <Text style={styles.conversationUnit}>
+                      {conv.unitName || 'General'} • Tenant
+                    </Text>
+                    <Text style={styles.conversationPreview} numberOfLines={1}>
+                      {conv.lastMessage.content}
+                    </Text>
+                  </View>
+                  {conv.unreadCount > 0 && (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadBadgeText}>{conv.unreadCount}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))
+            )}
           </View>
         </>
       )}
@@ -444,6 +504,33 @@ const styles = StyleSheet.create({
   requestContent: { flex: 1 },
   requestTitle: { fontSize: 14, fontWeight: '600', color: '#000' },
   requestStatus: { fontSize: 12, color: '#666', marginTop: 2, textTransform: 'capitalize' },
+  requestMeta: { fontSize: 12, color: '#888', marginTop: 2 },
+  requestStatusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8 },
+  requestDate: { fontSize: 11, color: '#999' },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  statusBadgeText: { fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  // Conversation styles
+  conversationCard: {
+    backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 8,
+    flexDirection: 'row', alignItems: 'center',
+    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2,
+  },
+  conversationAvatar: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#007AFF',
+    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+  },
+  conversationAvatarText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  conversationContent: { flex: 1 },
+  conversationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  conversationProperty: { fontSize: 15, fontWeight: '600', color: '#000', flex: 1 },
+  conversationTime: { fontSize: 11, color: '#999' },
+  conversationUnit: { fontSize: 12, color: '#666', marginTop: 2 },
+  conversationPreview: { fontSize: 13, color: '#888', marginTop: 4 },
+  unreadBadge: {
+    backgroundColor: '#007AFF', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
+    marginLeft: 8, minWidth: 20, alignItems: 'center',
+  },
+  unreadBadgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   emptyCard: {
     backgroundColor: '#fff', borderRadius: 10, padding: 24, alignItems: 'center',
     elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2,

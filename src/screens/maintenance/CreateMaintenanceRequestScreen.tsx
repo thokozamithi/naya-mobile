@@ -97,8 +97,32 @@ export default function CreateMaintenanceRequestScreen() {
         },
       ]);
     } catch (error: any) {
-      console.error('Error creating maintenance request:', error);
-      Alert.alert('Error', error.message || 'Failed to create maintenance request');
+      // Enhanced error logging for debugging
+      console.error('━━━━━━━ MAINTENANCE REQUEST ERROR ━━━━━━━');
+      console.error('Table: maintenance_requests');
+      console.error('Payload:', JSON.stringify({
+        property_id: activeProperty?.id,
+        unit_id: activeUnit?.id,
+        tenant_id: tenantId,
+        title: title.trim(),
+        description: '[REDACTED]',
+        priority,
+        status: 'pending'
+      }, null, 2));
+      console.error('Supabase Error:', JSON.stringify({
+        code: error?.code,
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint
+      }, null, 2));
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      // User-friendly error message
+      const userMessage = __DEV__ 
+        ? `Couldn't submit request: ${error?.message || 'Unknown error'}`
+        : "Couldn't submit request. Please try again.";
+      
+      Alert.alert('Error', userMessage);
     }
   };
 

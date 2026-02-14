@@ -38,10 +38,14 @@ export interface ActiveUnit {
  * useMembership - Single source of truth for tenant's active membership
  * Loads the tenant's active membership (unit_id, property_id, role)
  * Refreshes on app launch, after join success, and on screen focus
+ * NOTE: Only queries for tenant users - returns null for landlord/other roles
  */
 export const useMembership = () => {
   const { user, activeRole } = useAuth();
   const queryClient = useQueryClient();
+
+  // Only query tenants for tenant role users
+  const isTenantRole = activeRole === 'tenant';
 
   // Get active tenant record
   const { 
@@ -51,23 +55,29 @@ export const useMembership = () => {
     error: membershipError,
     isFetching: membershipFetching
   } = useQuery({
-    queryKey: ['tenant-membership', user?.id],
+    queryKey: ['tenant-membership', user?.id, activeRole],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!user?.id || !isTenantRole) {
+        console.log('[useMembership] Skipping query:', { role: activeRole, uid: user?.id, isTenantRole });
+        return null;
+      }
+
+      console.log('[useMembership] Querying tenants:', { role: activeRole, uid: user?.id });
 
       const { data, error } = await supabase
         .from('tenants')
         .select('*')
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
       if (error) {
-        // No active tenant record = not joined
-        if (error.code === 'PGRST116') return null;
+        console.error('[useMembership] Error:', { code: error.code, message: error.message, details: error.details });
         throw error;
       }
-      return data as TenantMembership;
+      
+      console.log('[useMembership] Result:', data ? 'Found tenant record' : 'No tenant record');
+      return data as TenantMembership | null;
     },
     enabled: !!user?.id,
     staleTime: 0, // Always refetch - critical for join/leave sync
@@ -391,34 +401,65 @@ export const usePropertyMessages = () => {
 
 /**
  * useSendMessage - Hook to send a message
+ * Supports both tenant (uses membership context) and landlord (requires propertyId param)
  */
 export const useSendMessage = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const { activeProperty, activeUnit, landlordId } = useMembership();
+  const { user, activeRole } = useAuth();
+  const { activeProperty, activeUnit } = useMembership();
 
   return useMutation({
-    mutationFn: async ({ receiverId, content }: { receiverId: string; content: string }) => {
+    mutationFn: async ({ receiverId, content, propertyId, unitId }: { 
+      receiverId: string; 
+      content: string;
+      propertyId?: string;  // Required for landlord, optional for tenant (uses membership)
+      unitId?: string | null;
+    }) => {
       if (!user?.id) throw new Error('Not authenticated');
-      if (!activeProperty?.id) throw new Error('You must be joined to a property to send messages');
+      
+      // Determine property_id - landlord must pass it, tenant uses membership
+      const messagePropertyId = propertyId || activeProperty?.id;
+      const messageUnitId = unitId !== undefined ? unitId : (activeUnit?.id || null);
+      
+      if (!messagePropertyId) {
+        throw new Error(activeRole === 'landlord' 
+          ? 'Property ID required for sending messages' 
+          : 'You must be joined to a property to send messages');
+      }
+
+      const payload = {
+        property_id: messagePropertyId,
+        unit_id: messageUnitId,
+        sender_id: user.id,
+        receiver_id: receiverId,
+        content,
+      };
+      
+      console.log('[useSendMessage] Inserting message:', {
+        table: 'messages',
+        role: activeRole,
+        payload: { ...payload, content: content.slice(0, 20) + '...' },
+      });
 
       const { data, error } = await supabase
         .from('messages')
-        .insert({
-          property_id: activeProperty.id,
-          unit_id: activeUnit?.id || null,
-          sender_id: user.id,
-          receiver_id: receiverId,
-          content,
-        })
+        .insert(payload)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useSendMessage] Error:', { code: error.code, message: error.message, details: error.details, hint: error.hint });
+        throw error;
+      }
+      
+      console.log('[useSendMessage] Success:', data?.id);
       return data;
     },
     onSuccess: () => {
+      // Invalidate both tenant and landlord message queries
       queryClient.invalidateQueries({ queryKey: ['property-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['landlord-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['landlord-conversations'] });
     },
   });
 };

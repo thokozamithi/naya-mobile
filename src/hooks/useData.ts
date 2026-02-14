@@ -300,18 +300,39 @@ export const useProjectDetail = (projectId: string | null | undefined) => {
   return { project, isLoading, error };
 };
 
-// Maintenance and requests
+// Maintenance and requests - For landlords: get all requests for their properties
 export const useMaintenanceRequests = (userId: string | undefined) => {
   return useQuery({
     queryKey: ['maintenanceRequests', userId],
     queryFn: async () => {
+      if (!userId) return [];
+      
+      // First get landlord's property IDs
+      const { data: properties, error: propError } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('user_id', userId);
+      
+      if (propError) throw propError;
+      if (!properties || properties.length === 0) return [];
+      
+      const propertyIds = properties.map(p => p.id);
+      
+      // Then get all maintenance requests for those properties
       const { data, error } = await supabase
         .from('maintenance_requests')
-        .select('*')
-        .eq('user_id', userId!)
+        .select(`
+          *,
+          unit:units(unit_name),
+          tenant:tenants(full_name, email)
+        `)
+        .in('property_id', propertyIds)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching maintenance requests:', { code: error.code, message: error.message, details: error.details });
+        throw error;
+      }
       return data || [];
     },
     enabled: !!userId,
@@ -350,6 +371,135 @@ export const useMessages = (userId: string | undefined) => {
       return data || [];
     },
     enabled: !!userId,
+  });
+};
+
+// Landlord Messages - Get all messages for properties landlord owns
+export const useLandlordMessages = () => {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['landlord-messages', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      // First get landlord's property IDs
+      const { data: properties, error: propError } = await supabase
+        .from('properties')
+        .select('id, name')
+        .eq('user_id', user.id);
+      
+      if (propError) {
+        console.error('Error fetching properties for messages:', propError);
+        throw propError;
+      }
+      if (!properties || properties.length === 0) return [];
+      
+      const propertyIds = properties.map(p => p.id);
+      
+      // Get all messages for those properties, with related data
+      const { data, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          property:properties(id, name),
+          unit:units(id, unit_name)
+        `)
+        .in('property_id', propertyIds)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching landlord messages:', { code: error.code, message: error.message, details: error.details });
+        throw error;
+      }
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+};
+
+// Landlord Conversations - Group messages by property/unit/sender for conversation list
+export interface LandlordConversation {
+  id: string;
+  propertyId: string;
+  propertyName: string;
+  unitId: string | null;
+  unitName: string | null;
+  tenantId: string;
+  tenantName: string | null;
+  lastMessage: any;
+  unreadCount: number;
+  messages: any[];
+}
+
+export const useLandlordConversations = () => {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ['landlord-conversations', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      // Get landlord's property IDs
+      const { data: properties, error: propError } = await supabase
+        .from('properties')
+        .select('id, name')
+        .eq('user_id', user.id);
+      
+      if (propError) throw propError;
+      if (!properties || properties.length === 0) return [];
+      
+      const propertyIds = properties.map(p => p.id);
+      const propertyMap = new Map(properties.map(p => [p.id, p.name]));
+      
+      // Get all messages for those properties
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          unit:units(id, unit_name)
+        `)
+        .in('property_id', propertyIds)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (!messages || messages.length === 0) return [];
+      
+      // Group by property + sender (tenant)
+      const conversationMap = new Map<string, LandlordConversation>();
+      
+      for (const msg of messages) {
+        // The "other" party is whoever isn't the landlord
+        const tenantId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
+        const key = `${msg.property_id}-${tenantId}`;
+        
+        if (!conversationMap.has(key)) {
+          conversationMap.set(key, {
+            id: key,
+            propertyId: msg.property_id,
+            propertyName: propertyMap.get(msg.property_id) || 'Unknown Property',
+            unitId: msg.unit_id,
+            unitName: msg.unit?.unit_name || null,
+            tenantId,
+            tenantName: null, // Will be populated by UI if needed
+            lastMessage: msg,
+            unreadCount: msg.receiver_id === user.id && !msg.is_read ? 1 : 0,
+            messages: [msg],
+          });
+        } else {
+          const conv = conversationMap.get(key)!;
+          conv.messages.push(msg);
+          if (msg.receiver_id === user.id && !msg.is_read) {
+            conv.unreadCount++;
+          }
+        }
+      }
+      
+      // Convert to array and sort by last message
+      return Array.from(conversationMap.values())
+        .sort((a, b) => new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime());
+    },
+    enabled: !!user?.id,
   });
 };
 
@@ -591,6 +741,8 @@ export const useUpdateMaintenanceRequest = () => {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<MaintenanceRequest> & { id: string }) => {
+      console.log('Updating maintenance request:', { id, updates });
+      
       const { data, error } = await supabase
         .from('maintenance_requests')
         .update(updates)
@@ -598,11 +750,17 @@ export const useUpdateMaintenanceRequest = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating maintenance request:', { code: error.code, message: error.message, details: error.details });
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['maintenanceRequests', user?.id] });
+      // Invalidate all maintenance request queries
+      queryClient.invalidateQueries({ queryKey: ['maintenanceRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['tenant-maintenance-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['property-maintenance-requests'] });
     },
   });
 };

@@ -14,31 +14,47 @@ import {
 } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 import { useMembership, usePropertyMessages, useSendMessage, useLandlordProfile } from '@/hooks/useQueries';
+import { useLandlordConversations } from '@/hooks/useData';
 import { formatTime } from '@/lib/utils';
 import { DashboardHeader } from '@/components/DashboardHeader';
 
 export default function MessagingScreen({ navigation }: any) {
   const { user, signOut, activeRole } = useAuth();
+  const isLandlord = activeRole === 'landlord';
+  
+  // Tenant hooks
   const { isJoined, activeProperty, activeUnit, landlordId, isLoading: membershipLoading } = useMembership();
-  const { data: messages = [], isLoading, refetch } = usePropertyMessages();
+  const { data: tenantMessages = [], isLoading: tenantMessagesLoading, refetch: refetchTenantMessages } = usePropertyMessages();
   const { data: landlordProfile } = useLandlordProfile();
   const sendMessageMutation = useSendMessage();
   
+  // Landlord hooks
+  const { data: landlordConversations = [], isLoading: landlordConvLoading, refetch: refetchLandlordConv } = useLandlordConversations();
+  
   const [newMessage, setNewMessage] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Combined loading state
+  const isLoading = isLandlord ? landlordConvLoading : (membershipLoading || tenantMessagesLoading);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    if (isLandlord) {
+      await refetchLandlordConv();
+    } else {
+      await refetchTenantMessages();
+    }
     setRefreshing(false);
-  }, [refetch]);
+  }, [isLandlord, refetchLandlordConv, refetchTenantMessages]);
 
-  // Memoize conversation grouping to avoid recalculating on every render
-  const conversations = useMemo(() => {
-    if (!user?.id || !isJoined) return [];
+  // Tenant: Group messages into conversations
+  const tenantConversations = useMemo(() => {
+    if (!user?.id || !isJoined || isLandlord) return [];
 
-    const grouped = messages.reduce((acc: any[], message: any) => {
+    const grouped = tenantMessages.reduce((acc: any[], message: any) => {
       const otherUserId =
         message.sender_id === user.id ? message.receiver_id : message.sender_id;
       const existing = acc.find((c: any) => c.otherUserId === otherUserId);
@@ -66,18 +82,130 @@ export default function MessagingScreen({ navigation }: any) {
     );
 
     return grouped;
-  }, [messages, user?.id, isJoined]);
+  }, [tenantMessages, user?.id, isJoined, isLandlord]);
+
+  // Select appropriate conversations based on role
+  const conversations = isLandlord ? landlordConversations : tenantConversations;
 
   // Memoize selected conversation messages
   const selectedConvMessages = useMemo(() => {
     if (!selectedConversation) return [];
-    const conv = conversations.find((c: any) => c.otherUserId === selectedConversation);
-    if (!conv) return [];
-    return [...conv.messages].sort(
-      (a: any, b: any) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    
+    if (isLandlord) {
+      const conv = landlordConversations.find((c: any) => c.id === selectedConversation || c.tenantId === selectedConversation);
+      if (!conv) return [];
+      return [...conv.messages].sort(
+        (a: any, b: any) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    } else {
+      const conv = tenantConversations.find((c: any) => c.otherUserId === selectedConversation);
+      if (!conv) return [];
+      return [...conv.messages].sort(
+        (a: any, b: any) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    }
+  }, [isLandlord, landlordConversations, tenantConversations, selectedConversation]);
+
+  // Get display name for conversation partner
+  const getPartnerName = useCallback((otherUserId: string) => {
+    if (isLandlord) {
+      // For landlord, try to find tenant info from conversation
+      const conv = landlordConversations.find((c: any) => c.tenantId === otherUserId);
+      if (conv?.tenantName) return conv.tenantName;
+      return 'Tenant';
+    }
+    if (otherUserId === landlordId && landlordProfile) {
+      return landlordProfile.full_name || 'Your Landlord';
+    }
+    return otherUserId.slice(0, 8) + '...';
+  }, [isLandlord, landlordId, landlordProfile, landlordConversations]);
+
+  // Render helpers - must be before early returns to maintain hooks order
+  const renderMessageItem = useCallback(({ item }: { item: any }) => {
+    const isOwn = item.sender_id === user?.id;
+    return (
+      <View style={[styles.messageRow, isOwn && styles.messageRowOwn]}>
+        <View style={[styles.messageBubble, isOwn && styles.messageBubbleOwn]}>
+          <Text style={[styles.messageText, isOwn && styles.messageTextOwn]}>
+            {item.content}
+          </Text>
+          <Text style={[styles.messageTime, isOwn && styles.messageTimeOwn]}>
+            {formatTime(item.created_at)}
+          </Text>
+        </View>
+      </View>
     );
-  }, [conversations, selectedConversation]);
+  }, [user?.id]);
+
+  // Render conversation item for tenant
+  const renderTenantConversationItem = useCallback(({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={styles.conversationItem}
+      onPress={() => setSelectedConversation(item.otherUserId)}
+    >
+      <View style={styles.avatarPlaceholder}>
+        <Text style={styles.avatarText}>
+          {item.otherUserId === landlordId ? 'L' : item.otherUserId.charAt(0).toUpperCase()}
+        </Text>
+      </View>
+      <View style={styles.conversationInfo}>
+        <View style={styles.conversationHeader}>
+          <Text style={styles.conversationName} numberOfLines={1}>
+            {getPartnerName(item.otherUserId)}
+          </Text>
+          <Text style={styles.conversationTime}>
+            {formatTime(item.lastMessage.created_at)}
+          </Text>
+        </View>
+        <Text style={styles.lastMessage} numberOfLines={1}>
+          {item.lastMessage.sender_id === user?.id ? 'You: ' : ''}
+          {item.lastMessage.content}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  ), [user?.id, landlordId, getPartnerName]);
+
+  // Render conversation item for landlord (different structure)
+  const renderLandlordConversationItem = useCallback(({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={styles.conversationItem}
+      onPress={() => {
+        setSelectedConversation(item.tenantId);
+        setSelectedPropertyId(item.propertyId);
+        setSelectedUnitId(item.unitId || null);
+      }}
+    >
+      <View style={[styles.avatarPlaceholder, { backgroundColor: '#34C759' }]}>
+        <Text style={styles.avatarText}>
+          {item.propertyName?.charAt(0)?.toUpperCase() || 'P'}
+        </Text>
+      </View>
+      <View style={styles.conversationInfo}>
+        <View style={styles.conversationHeader}>
+          <Text style={styles.conversationName} numberOfLines={1}>
+            {item.propertyName || 'Property'}
+          </Text>
+          <Text style={styles.conversationTime}>
+            {formatTime(item.lastMessage?.created_at)}
+          </Text>
+        </View>
+        <Text style={styles.conversationUnit}>
+          {item.unitName || 'General'} • Tenant
+        </Text>
+        <Text style={styles.lastMessage} numberOfLines={1}>
+          {item.lastMessage?.sender_id === user?.id ? 'You: ' : ''}
+          {item.lastMessage?.content || 'No messages'}
+        </Text>
+      </View>
+      {item.unreadCount > 0 && (
+        <View style={styles.unreadBadge}>
+          <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  ), [user?.id]);
 
   // Navigation handlers for header
   const handleLogoPress = () => navigation?.navigate?.('Home');
@@ -92,8 +220,8 @@ export default function MessagingScreen({ navigation }: any) {
     );
   }
 
-  // Show loading while checking membership
-  if (membershipLoading) {
+  // Show loading
+  if (isLoading) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -106,8 +234,8 @@ export default function MessagingScreen({ navigation }: any) {
     );
   }
 
-  // Show gate if not joined to a property
-  if (!isJoined) {
+  // For TENANT: Show gate if not joined to a property
+  if (!isLandlord && !isJoined) {
     return (
       <>
         <DashboardHeader
@@ -146,6 +274,9 @@ export default function MessagingScreen({ navigation }: any) {
       await sendMessageMutation.mutateAsync({
         receiverId: selectedConversation,
         content: newMessage.trim(),
+        // For landlord, pass the property context; for tenant, hook uses membership
+        propertyId: isLandlord ? (selectedPropertyId || undefined) : undefined,
+        unitId: isLandlord ? selectedUnitId : undefined,
       });
       setNewMessage('');
     } catch (error) {
@@ -159,57 +290,6 @@ export default function MessagingScreen({ navigation }: any) {
       setSelectedConversation(landlordId);
     }
   };
-
-  const renderMessageItem = useCallback(({ item }: { item: any }) => {
-    const isOwn = item.sender_id === user!.id;
-    return (
-      <View style={[styles.messageRow, isOwn && styles.messageRowOwn]}>
-        <View style={[styles.messageBubble, isOwn && styles.messageBubbleOwn]}>
-          <Text style={[styles.messageText, isOwn && styles.messageTextOwn]}>
-            {item.content}
-          </Text>
-          <Text style={[styles.messageTime, isOwn && styles.messageTimeOwn]}>
-            {formatTime(item.created_at)}
-          </Text>
-        </View>
-      </View>
-    );
-  }, [user]);
-
-  // Get display name for conversation partner
-  const getPartnerName = (otherUserId: string) => {
-    if (otherUserId === landlordId && landlordProfile) {
-      return landlordProfile.full_name || 'Your Landlord';
-    }
-    return otherUserId.slice(0, 8) + '...';
-  };
-
-  const renderConversationItem = useCallback(({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.conversationItem}
-      onPress={() => setSelectedConversation(item.otherUserId)}
-    >
-      <View style={styles.avatarPlaceholder}>
-        <Text style={styles.avatarText}>
-          {item.otherUserId === landlordId ? 'L' : item.otherUserId.charAt(0).toUpperCase()}
-        </Text>
-      </View>
-      <View style={styles.conversationInfo}>
-        <View style={styles.conversationHeader}>
-          <Text style={styles.conversationName} numberOfLines={1}>
-            {getPartnerName(item.otherUserId)}
-          </Text>
-          <Text style={styles.conversationTime}>
-            {formatTime(item.lastMessage.created_at)}
-          </Text>
-        </View>
-        <Text style={styles.lastMessage} numberOfLines={1}>
-          {item.lastMessage.sender_id === user!.id ? 'You: ' : ''}
-          {item.lastMessage.content}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  ), [user]);
 
   if (selectedConversation) {
     const partnerName = getPartnerName(selectedConversation);
@@ -303,9 +383,11 @@ export default function MessagingScreen({ navigation }: any) {
             <Text style={{ fontSize: 40, marginBottom: 12 }}>💬</Text>
             <Text style={styles.emptyStateTitle}>No messages yet</Text>
             <Text style={styles.emptyStateText}>
-              Start a conversation with your landlord
+              {isLandlord 
+                ? 'Messages from tenants will appear here' 
+                : 'Start a conversation with your landlord'}
             </Text>
-            {landlordId && (
+            {!isLandlord && landlordId && (
               <TouchableOpacity
                 style={styles.joinButton}
                 onPress={handleStartConversation}
@@ -317,8 +399,8 @@ export default function MessagingScreen({ navigation }: any) {
         ) : (
           <FlatList
             data={conversations}
-            keyExtractor={(item) => item.otherUserId}
-            renderItem={renderConversationItem}
+            keyExtractor={(item) => isLandlord ? item.id : item.otherUserId}
+            renderItem={isLandlord ? renderLandlordConversationItem : renderTenantConversationItem}
             initialNumToRender={15}
             maxToRenderPerBatch={10}
             contentContainerStyle={{ paddingBottom: 40 }}
@@ -437,9 +519,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
   },
+  conversationUnit: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
   lastMessage: {
     fontSize: 14,
     color: '#666',
+  },
+  unreadBadge: {
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 8,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  unreadBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   messagesList: {
     padding: 12,
