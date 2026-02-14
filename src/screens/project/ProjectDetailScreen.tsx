@@ -8,12 +8,221 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  Modal,
+} from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import {
+  useProjectDetail,
+  useProjectNotes,
+  useUpdateProject,
+  useAddProjectNote,
+  useProjectThread,
+  useProjectMessages,
+  useSendProjectMessage,
+} from '@/hooks/useData';
+import { useAuth } from '@/hooks/useAuth';
+import { formatDate, formatTime } from '@/lib/utils';
+
+interface RouteParams {
+  projectId: string;
+}
+
+const STATUS_OPTIONS = ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'];
+const PROGRESS_OPTIONS = [0, 10, 25, 50, 75, 90, 100];
+
+type ProjectTab = 'overview' | 'notes' | 'chat';
+
+export default function ProjectDetailScreen() {
+  const route = useRoute();
+  const navigation = useNavigation<any>();
+  const { projectId } = (route.params as RouteParams) || {};
+  const { activeRole, user } = useAuth();
+
+  const { project, isLoading, error, refetch } = useProjectDetail(projectId);
+  const { data: notes = [] } = useProjectNotes(projectId);
+  const { data: thread } = useProjectThread(projectId);
+  const { data: messages = [], isLoading: messagesLoading } = useProjectMessages(thread?.id);
+  const updateProjectMutation = useUpdateProject();
+  const addNoteMutation = useAddProjectNote();
+  const sendMessageMutation = useSendProjectMessage();
+
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteText, setNoteText] = useState('');
+  const [activeTab, setActiveTab] = useState<ProjectTab>('overview');
+  const [messageText, setMessageText] = useState('');
+
+  if (!projectId) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Project not found</Text>
+      </View>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#0066cc" />
+      </View>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Error loading project details</Text>
+      </View>
+    );
+  }
+
+  const handleStatusChange = async (newStatus: string) => {
+    const oldStatus = project.status;
+    if (newStatus === oldStatus) {
+      setShowStatusModal(false);
+      return;
+    }
+
+    try {
+      await updateProjectMutation.mutateAsync({ id: project.id, status: newStatus });
+      await addNoteMutation.mutateAsync({
+        project_id: project.id,
+        author_role: getAuthorRole(activeRole),
+        body: `Status changed to ${newStatus.replace('_', ' ')}`,
+      });
+      await refetch();
+      setShowStatusModal(false);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to update status');
+    }
+  };
+
+  const handleProgressChange = async (newProgress: number) => {
+    try {
+      await updateProjectMutation.mutateAsync({ id: project.id, progress: newProgress });
+      await addNoteMutation.mutateAsync({
+        project_id: project.id,
+        author_role: getAuthorRole(activeRole),
+        body: `Progress updated to ${newProgress}%`,
+      });
+      await refetch();
+      setShowProgressModal(false);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to update progress');
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!noteText.trim()) return;
+    try {
+      await addNoteMutation.mutateAsync({
+        project_id: project.id,
+        author_role: getAuthorRole(activeRole),
+        body: noteText.trim(),
+      });
+      setNoteText('');
+      setShowNoteModal(false);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to add note');
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!thread?.id || !messageText.trim()) return;
+    try {
+      await sendMessageMutation.mutateAsync({ threadId: thread.id, body: messageText.trim() });
+      setMessageText('');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to send message');
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return '#34C759';
+      case 'in_progress':
+        return '#FF9500';
+      case 'pending':
+        return '#5AC8FA';
+      case 'on_hold':
+        return '#FF3B30';
+      case 'cancelled':
+        return '#999';
+      default:
+        return '#999';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return '#FF3B30';
+      case 'high':
+        return '#FF9500';
+      case 'medium':
+        return '#5AC8FA';
+      case 'low':
+        return '#34C759';
+      default:
+        return '#999';
+    }
+  };
+
+  const getAuthorRole = (role: string | null | undefined) => {
+    if (role === 'landlord') return 'landlord';
+    if (role === 'employee') return 'employee';
+    if (role === 'tenant') return 'tenant';
+    return 'system';
+  };
+
+  const daysUntilDue = project.due_date
+    ? Math.ceil((new Date(project.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  const canEdit = activeRole === 'landlord' || activeRole === 'employee';
+  const canUpdateProgress = activeRole === 'landlord';
+
+  return (
+    <>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.backLink}>← Back</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.projectHeader}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(project.status) }]}>
+            <Text style={styles.statusText}>{project.status.replace('_', ' ').toUpperCase()}</Text>
+          </View>
+          <Text style={styles.title}>{project.title}</Text>
+          {project.property?.name && (
+            <Text style={styles.propertyName}>📍 {project.property.name}</Text>
+          )}
+          <View style={styles.metaRow}>
+            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(project.priority) + '22' }]}>
+              <Text style={[styles.priorityText, { color: getPriorityColor(project.priority) }]}>
+                {project.priority} priority
+              </Text>
+            </View>
+            {project.due_date && (
+              <Text style={[styles.dueDate, daysUntilDue !== null && daysUntilDue < 0 ? { color: '#FF3B30' } : {}]}>
+                Due: {formatDate(project.due_date)}
+                {daysUntilDue !== null && daysUntilDue > 0 && ` (${daysUntilDue}d left)`}
+                {daysUntilDue !== null && daysUntilDue < 0 && ` (${Math.abs(daysUntilDue)}d overdue)`}
+              </Text>
+            )}
+          </View>
+        </View>
+
         <View style={styles.tabRow}>
           {['overview', 'notes', 'chat'].map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-              onPress={() => setActiveTab(tab as 'overview' | 'notes' | 'chat')}
+              onPress={() => setActiveTab(tab as ProjectTab)}
             >
               <Text style={[styles.tabButtonText, activeTab === tab && styles.tabButtonTextActive]}>
                 {tab === 'overview' ? 'Overview' : tab === 'notes' ? 'Notes' : 'Chat'}
@@ -105,12 +314,14 @@ import {
                   >
                     <Text style={styles.buttonText}>Update Status</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.secondaryButton}
-                    onPress={() => setShowProgressModal(true)}
-                  >
-                    <Text style={styles.secondaryButtonText}>Update Progress</Text>
-                  </TouchableOpacity>
+                  {canUpdateProgress && (
+                    <TouchableOpacity
+                      style={styles.secondaryButton}
+                      onPress={() => setShowProgressModal(true)}
+                    >
+                      <Text style={styles.secondaryButtonText}>Update Progress</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </>
@@ -188,208 +399,10 @@ import {
             </View>
           )}
         </View>
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent': return '#FF3B30';
-      case 'high': return '#FF9500';
-      case 'medium': return '#5AC8FA';
-      case 'low': return '#34C759';
-      default: return '#999';
-    }
-  };
-
-  const getAuthorRole = (role: string | null | undefined) => {
-    if (role === 'landlord') return 'landlord';
-    if (role === 'employee') return 'employee';
-    if (role === 'tenant') return 'tenant';
-    return 'system';
-  };
-
-  const daysUntilDue = project.due_date
-    ? Math.ceil((new Date(project.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    : null;
-
-  const canEdit = activeRole === 'landlord' || activeRole === 'employee';
-  const canUpdateProgress = activeRole === 'landlord';
-
-  return (
-    <>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backLink}>← Back</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Project Header */}
-        <View style={styles.projectHeader}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(project.status) }]}>
-            <Text style={styles.statusText}>{project.status.replace('_', ' ').toUpperCase()}</Text>
-          </View>
-          <Text style={styles.title}>{project.title}</Text>
-          {project.property?.name && (
-            <Text style={styles.propertyName}>📍 {project.property.name}</Text>
-          )}
-          <View style={styles.metaRow}>
-            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(project.priority) + '22' }]}>
-              <Text style={[styles.priorityText, { color: getPriorityColor(project.priority) }]}>
-                {project.priority} priority
-              </Text>
-            </View>
-            {project.due_date && (
-              <Text style={[styles.dueDate, daysUntilDue !== null && daysUntilDue < 0 ? { color: '#FF3B30' } : {}]}>
-                Due: {formatDate(project.due_date)}
-                {daysUntilDue !== null && daysUntilDue > 0 && ` (${daysUntilDue}d left)`}
-                {daysUntilDue !== null && daysUntilDue < 0 && ` (${Math.abs(daysUntilDue)}d overdue)`}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.content}>
-          {/* Description */}
-          {project.description && (
-            <View style={styles.section}>
-              <Text style={styles.label}>Description</Text>
-              <Text style={styles.value}>{project.description}</Text>
-            </View>
-          )}
-
-          {/* Progress Bar */}
-          <View style={styles.section}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.label}>Progress</Text>
-              <Text style={styles.progressText}>{project.progress}%</Text>
-            </View>
-            <View style={styles.progressBarContainer}>
-              <View style={[styles.progressBar, { width: `${project.progress}%`, backgroundColor: getStatusColor(project.status) }]} />
-            </View>
-          </View>
-
-          {/* Detail Cards */}
-          <View style={styles.detailsRow}>
-            <View style={styles.detailCard}>
-              <Text style={styles.detailLabel}>Status</Text>
-              <Text style={[styles.detailValue, { color: getStatusColor(project.status) }]}>
-                {project.status.replace('_', ' ')}
-              </Text>
-            </View>
-            <View style={styles.detailCard}>
-              <Text style={styles.detailLabel}>Priority</Text>
-              <Text style={[styles.detailValue, { color: getPriorityColor(project.priority) }]}>
-                {project.priority}
-              </Text>
-            </View>
-            {project.budget !== null && project.budget !== undefined && (
-              <View style={styles.detailCard}>
-                <Text style={styles.detailLabel}>Budget</Text>
-                <Text style={styles.detailValue}>${Number(project.budget).toLocaleString()}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Timeline */}
-          <View style={styles.row}>
-            {project.started_at && (
-              <View style={styles.columnSection}>
-                <Text style={styles.label}>Started</Text>
-                <Text style={styles.value}>{formatDate(project.started_at)}</Text>
-              </View>
-            )}
-            {project.completed_at && (
-              <View style={styles.columnSection}>
-                <Text style={styles.label}>Completed</Text>
-                <Text style={styles.value}>{formatDate(project.completed_at)}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Assigned Employees */}
-          {project.assignments && project.assignments.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.label}>Assigned Team</Text>
-              {project.assignments.map((a: any) => (
-                <View key={a.id} style={styles.assignmentCard}>
-                  <View style={styles.assignmentAvatar}>
-                    <Text style={styles.assignmentAvatarText}>
-                      {(a.employee?.full_name || '?').charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.assignmentName}>{a.employee?.full_name || 'Unknown'}</Text>
-                    <Text style={styles.assignmentRole}>{a.role} • {a.employee?.email || ''}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Action Buttons */}
-          {canEdit && (
-            <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => setShowStatusModal(true)}
-              >
-                <Text style={styles.buttonText}>Update Status</Text>
-              </TouchableOpacity>
-                  {canUpdateProgress && (
-                    <TouchableOpacity
-                      style={styles.secondaryButton}
-                      onPress={() => setShowProgressModal(true)}
-                    >
-                      <Text style={styles.secondaryButtonText}>Update Progress</Text>
-                    </TouchableOpacity>
-                  )}
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => setShowNoteModal(true)}
-              >
-                <Text style={styles.secondaryButtonText}>Add Note</Text>
-              </TouchableOpacity>
-              {canMessageTeam && (
-                <TouchableOpacity
-                  style={[styles.secondaryButton, isCreatingThread && { opacity: 0.6 }]}
-                  onPress={handleMessageTeam}
-                  disabled={isCreatingThread}
-                >
-                  <Text style={styles.secondaryButtonText}>
-                    {activeRole === 'employee' ? 'Message Landlord' : 'Message Team'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-
-          {/* Activity Log */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Activity Log</Text>
-            {updates.length === 0 ? (
-              <Text style={styles.emptyText}>No updates yet</Text>
-            ) : (
-              updates.slice(0, 20).map((upd: any) => (
-                <View key={upd.id} style={styles.activityItem}>
-                  <View style={styles.activityDot} />
-                  <View style={{ flex: 1 }}>
-                    {upd.status_change && (
-                      <Text style={styles.activityStatus}>{upd.status_change.replace('→', ' → ')}</Text>
-                    )}
-                    {upd.progress_change !== null && upd.progress_change !== undefined && (
-                      <Text style={styles.activityProgress}>Progress: {upd.progress_change}%</Text>
-                    )}
-                    {upd.note && <Text style={styles.activityNote}>{upd.note}</Text>}
-                    <Text style={styles.activityTime}>{formatTime(upd.created_at)}</Text>
-                  </View>
-                </View>
-              ))
-            )}
-          </View>
-        </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Status Modal */}
       <Modal visible={showStatusModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -414,7 +427,6 @@ import {
         </View>
       </Modal>
 
-      {/* Progress Modal */}
       <Modal visible={showProgressModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -439,7 +451,6 @@ import {
         </View>
       </Modal>
 
-      {/* Note Modal */}
       <Modal visible={showNoteModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -486,12 +497,12 @@ const styles = StyleSheet.create({
   priorityBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
   priorityText: { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
   dueDate: { fontSize: 12, color: '#666' },
-  content: { padding: 16 },
   tabRow: { flexDirection: 'row', paddingHorizontal: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
   tabButton: { paddingVertical: 12, paddingHorizontal: 10, marginRight: 8 },
   tabButtonActive: { borderBottomWidth: 2, borderBottomColor: '#0066cc' },
   tabButtonText: { fontSize: 14, color: '#666', fontWeight: '600' },
   tabButtonTextActive: { color: '#0066cc' },
+  content: { padding: 16 },
   section: { marginBottom: 16 },
   label: { fontSize: 12, color: '#999', fontWeight: '600', marginBottom: 6, textTransform: 'uppercase' },
   value: { fontSize: 15, color: '#333', lineHeight: 22 },
@@ -512,7 +523,7 @@ const styles = StyleSheet.create({
   assignmentRole: { fontSize: 12, color: '#666', textTransform: 'capitalize' },
   actionButtons: { marginTop: 8, marginBottom: 16, gap: 10 },
   primaryButton: { backgroundColor: '#0066cc', paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-  secondaryButton: { backgroundColor: '#fff', paddingVertical: 14, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: '#ddd' },
+  secondaryButton: { backgroundColor: '#fff', paddingVertical: 14, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: '#ddd', marginTop: 10 },
   buttonText: { fontSize: 15, fontWeight: '600', color: '#fff' },
   secondaryButtonText: { fontSize: 15, fontWeight: '600', color: '#0066cc' },
   errorText: { fontSize: 16, color: '#d32f2f', textAlign: 'center', marginTop: 20 },
