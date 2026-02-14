@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
-import { useCreateMaintenanceRequest } from '@/hooks/useData';
+import { useMembership, useCreateTenantMaintenanceRequest } from '@/hooks/useQueries';
 
 const PRIORITIES = [
   { value: 'low', label: 'Low', color: '#34C759' },
@@ -30,9 +30,26 @@ interface RouteParams {
 export default function CreateMaintenanceRequestScreen() {
   const route = useRoute();
   const navigation = useNavigation<any>();
-  const { user } = useAuth();
-  const createRequest = useCreateMaintenanceRequest();
-  const { propertyId, unitId, propertyName } = (route.params as RouteParams) || {};
+  const { user, activeRole } = useAuth();
+  
+  // Use membership hook for tenant context
+  const { 
+    isJoined, 
+    activeProperty, 
+    activeUnit, 
+    tenantId,
+    isLoading: membershipLoading 
+  } = useMembership();
+  
+  const createRequest = useCreateTenantMaintenanceRequest();
+  
+  // Route params can override (for landlord initiated requests)
+  const routeParams = (route.params as RouteParams) || {};
+  
+  // Determine effective property/unit context
+  const effectivePropertyId = routeParams.propertyId || activeProperty?.id;
+  const effectiveUnitId = routeParams.unitId || activeUnit?.id;
+  const effectivePropertyName = routeParams.propertyName || activeProperty?.name;
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -60,15 +77,17 @@ export default function CreateMaintenanceRequestScreen() {
       return;
     }
 
+    // For tenants, require membership context
+    if (activeRole === 'tenant' && !tenantId) {
+      Alert.alert('Error', 'You must join a property before creating maintenance requests');
+      return;
+    }
+
     try {
       await createRequest.mutateAsync({
-        property_id: propertyId || null,
-        unit_id: unitId || null,
-        reported_by: user.id,
         title: title.trim(),
         description: description.trim(),
         priority,
-        status: 'pending',
       });
 
       Alert.alert('Success', 'Maintenance request created successfully!', [
@@ -82,6 +101,56 @@ export default function CreateMaintenanceRequestScreen() {
       Alert.alert('Error', error.message || 'Failed to create maintenance request');
     }
   };
+
+  // Loading state
+  if (membershipLoading && activeRole === 'tenant') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.backButton}>← Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Request Maintenance</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Not joined state for tenants
+  if (activeRole === 'tenant' && !isJoined) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.backButton}>← Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Request Maintenance</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <View style={styles.notJoinedContainer}>
+          <Text style={styles.notJoinedIcon}>🏠</Text>
+          <Text style={styles.notJoinedTitle}>Join a property first</Text>
+          <Text style={styles.notJoinedText}>
+            You need to join a property before you can submit maintenance requests.
+          </Text>
+          <TouchableOpacity
+            style={styles.joinButton}
+            onPress={() => {
+              navigation.goBack();
+              navigation.navigate('JoinProperty');
+            }}
+          >
+            <Text style={styles.joinButtonText}>Join Property</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -97,9 +166,12 @@ export default function CreateMaintenanceRequestScreen() {
           <View style={{ width: 60 }} />
         </View>
 
-        {propertyName && (
+        {effectivePropertyName && (
           <View style={styles.propertyBanner}>
-            <Text style={styles.propertyBannerText}>For: {propertyName}</Text>
+            <Text style={styles.propertyBannerText}>For: {effectivePropertyName}</Text>
+            {activeUnit && (
+              <Text style={styles.unitBannerText}>Unit: {activeUnit.unit_name}</Text>
+            )}
           </View>
         )}
 
@@ -205,17 +277,67 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 12,
+  },
+  notJoinedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  notJoinedIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  notJoinedTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 8,
+  },
+  notJoinedText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  joinButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 8,
+  },
+  joinButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   propertyBanner: {
-    backgroundColor: '#FFF3CD',
+    backgroundColor: '#E8F4FF',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#FFE69C',
+    borderBottomColor: '#B8DAFF',
   },
   propertyBannerText: {
     fontSize: 14,
-    color: '#856404',
+    color: '#007AFF',
     fontWeight: '600',
+  },
+  unitBannerText: {
+    fontSize: 13,
+    color: '#007AFF',
+    marginTop: 2,
   },
   form: {
     padding: 16,

@@ -26,7 +26,8 @@ const TenantDashboard = ({ navigation }: any) => {
     activeProperty, 
     activeUnit, 
     tenantId,
-    isLoading: membershipLoading, 
+    isLoading: membershipLoading,
+    isFetching: membershipFetching,
     refreshMembership 
   } = useMembership();
   
@@ -40,13 +41,14 @@ const TenantDashboard = ({ navigation }: any) => {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshMembership();
-    setTimeout(() => setRefreshing(false), 1000);
+    setRefreshing(false);
   }, [refreshMembership]);
 
   const handleLeaveUnit = async () => {
     try {
       await leaveUnit.mutateAsync();
       setShowLeaveModal(false);
+      await refreshMembership(); // Also refresh after leaving
       Alert.alert('Success', 'You have left the unit. You can join another property at any time.');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to leave unit');
@@ -141,7 +143,7 @@ const TenantDashboard = ({ navigation }: any) => {
                 </TouchableOpacity>
               )}
             </View>
-            {membershipLoading ? (
+            {(membershipLoading || membershipFetching) ? (
               <View style={styles.skeletonCard}>
                 <View style={[styles.skeletonLine, { width: '60%', height: 16 }]} />
                 <View style={[styles.skeletonLine, { width: '80%', height: 12, marginTop: 8 }]} />
@@ -317,14 +319,32 @@ const TenantDashboard = ({ navigation }: any) => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>All Maintenance Requests</Text>
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => navigation.navigate('CreateMaintenanceRequest', {})}
-              >
-                <Text style={styles.addButtonText}>+ Report Issue</Text>
-              </TouchableOpacity>
+              {isJoined && (
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={() => navigation.navigate('CreateMaintenanceRequest', {
+                    propertyId: activeProperty?.id,
+                    unitId: activeUnit?.id,
+                    propertyName: activeProperty?.name
+                  })}
+                >
+                  <Text style={styles.addButtonText}>+ Report Issue</Text>
+                </TouchableOpacity>
+              )}
             </View>
-            {isLoading ? (
+            {!isJoined ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>🔧</Text>
+                <Text style={styles.emptyText}>Join a property first</Text>
+                <Text style={styles.emptySubtext}>You need to join a property to submit maintenance requests</Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate('JoinProperty')}
+                >
+                  <Text style={styles.emptyButtonText}>Join Property</Text>
+                </TouchableOpacity>
+              </View>
+            ) : isLoading ? (
               [1, 2, 3].map((i) => (
                 <View key={i} style={styles.skeletonCard}>
                   <View style={[styles.skeletonLine, { width: '60%', height: 14 }]} />
@@ -333,14 +353,18 @@ const TenantDashboard = ({ navigation }: any) => {
               ))
             ) : requests.length === 0 ? (
               <View style={styles.emptyCard}>
-                <Text style={styles.emptyIcon}>🔧</Text>
+                <Text style={styles.emptyIcon}>✅</Text>
                 <Text style={styles.emptyText}>No maintenance requests</Text>
-                <Text style={styles.emptySubtext}>Submit a request when you need something fixed</Text>
+                <Text style={styles.emptySubtext}>Everything looks good! Create a request when you need something fixed.</Text>
                 <TouchableOpacity
                   style={styles.emptyButton}
-                  onPress={() => navigation.navigate('CreateMaintenanceRequest', {})}
+                  onPress={() => navigation.navigate('CreateMaintenanceRequest', {
+                    propertyId: activeProperty?.id,
+                    unitId: activeUnit?.id,
+                    propertyName: activeProperty?.name
+                  })}
                 >
-                  <Text style={styles.emptyButtonText}>Report Issue</Text>
+                  <Text style={styles.emptyButtonText}>Create First Request</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -368,28 +392,155 @@ const TenantDashboard = ({ navigation }: any) => {
         </>
       )}
 
+      {/* Lease Tab */}
+      {activeTab === 'Lease' && (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Your Lease</Text>
+            {!isJoined ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>📄</Text>
+                <Text style={styles.emptyText}>Join a property first</Text>
+                <Text style={styles.emptySubtext}>You need to join a property to view your lease</Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate('JoinProperty')}
+                >
+                  <Text style={styles.emptyButtonText}>Join Property</Text>
+                </TouchableOpacity>
+              </View>
+            ) : leaseLoading ? (
+              <View style={styles.skeletonCard}>
+                <View style={[styles.skeletonLine, { width: '60%', height: 16 }]} />
+                <View style={[styles.skeletonLine, { width: '80%', height: 12, marginTop: 8 }]} />
+                <View style={[styles.skeletonLine, { width: '40%', height: 12, marginTop: 8 }]} />
+              </View>
+            ) : !lease ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>📝</Text>
+                <Text style={styles.emptyText}>No lease uploaded yet</Text>
+                <Text style={styles.emptySubtext}>Your landlord hasn't uploaded a lease for your unit. Contact them if you need a copy.</Text>
+              </View>
+            ) : (
+              <View style={styles.leaseCard}>
+                <View style={styles.leaseHeader}>
+                  <Text style={styles.leaseTitle}>Active Lease</Text>
+                  <View style={[styles.badge, { backgroundColor: '#34C75920' }]}>
+                    <Text style={[styles.badgeText, { color: '#34C759' }]}>{lease.status}</Text>
+                  </View>
+                </View>
+                <View style={styles.leaseDetails}>
+                  <View style={styles.leaseRow}>
+                    <Text style={styles.leaseLabel}>Start Date</Text>
+                    <Text style={styles.leaseValue}>{new Date(lease.start_date).toLocaleDateString()}</Text>
+                  </View>
+                  <View style={styles.leaseRow}>
+                    <Text style={styles.leaseLabel}>End Date</Text>
+                    <Text style={styles.leaseValue}>{new Date(lease.end_date).toLocaleDateString()}</Text>
+                  </View>
+                  <View style={styles.leaseRow}>
+                    <Text style={styles.leaseLabel}>Monthly Rent</Text>
+                    <Text style={styles.leaseValue}>${lease.monthly_rent}/mo</Text>
+                  </View>
+                  {lease.security_deposit && (
+                    <View style={styles.leaseRow}>
+                      <Text style={styles.leaseLabel}>Security Deposit</Text>
+                      <Text style={styles.leaseValue}>${lease.security_deposit}</Text>
+                    </View>
+                  )}
+                </View>
+                {lease.lease_document_url && (
+                  <TouchableOpacity style={styles.viewDocButton}>
+                    <Text style={styles.viewDocButtonText}>View Document</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        </>
+      )}
+
       {/* Messages Tab */}
       {activeTab === 'Messages' && (
         <>
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Messages</Text>
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyText}>Messages coming soon</Text>
-              <Text style={styles.emptySubtext}>Direct messaging will be available in a future update</Text>
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={() => navigation.navigate('Messaging')}
-              >
-                <Text style={styles.emptyButtonText}>Go to Messages</Text>
-              </TouchableOpacity>
-            </View>
+            {!isJoined ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>💬</Text>
+                <Text style={styles.emptyText}>Join a property first</Text>
+                <Text style={styles.emptySubtext}>You need to join a property to message your landlord</Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate('JoinProperty')}
+                >
+                  <Text style={styles.emptyButtonText}>Join Property</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyIcon}>💬</Text>
+                <Text style={styles.emptyText}>Start a conversation</Text>
+                <Text style={styles.emptySubtext}>Message your landlord about any questions or concerns</Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => navigation.navigate('Messaging', { 
+                    propertyId: activeProperty?.id,
+                    landlordId: activeProperty?.user_id
+                  })}
+                >
+                  <Text style={styles.emptyButtonText}>Open Messages</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </>
       )}
 
       <View style={{ height: 40 }} />
     </ScrollView>
+
+    {/* Leave Unit Confirmation Modal */}
+    <Modal
+      visible={showLeaveModal}
+      animationType="fade"
+      transparent
+      onRequestClose={() => setShowLeaveModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalIcon}>🚪</Text>
+          <Text style={styles.modalTitle}>Leave Unit?</Text>
+          <Text style={styles.modalText}>
+            Are you sure you want to leave {activeUnit?.unit_name || 'this unit'}? 
+            You will lose access to:
+          </Text>
+          <View style={styles.modalList}>
+            <Text style={styles.modalListItem}>• Messages with your landlord</Text>
+            <Text style={styles.modalListItem}>• Your lease documents</Text>
+            <Text style={styles.modalListItem}>• Rent payment features</Text>
+            <Text style={styles.modalListItem}>• Maintenance request history</Text>
+          </View>
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={() => setShowLeaveModal(false)}
+            >
+              <Text style={styles.modalCancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalConfirmButton}
+              onPress={handleLeaveUnit}
+              disabled={leaveUnit.isPending}
+            >
+              <Text style={styles.modalConfirmButtonText}>
+                {leaveUnit.isPending ? 'Leaving...' : 'Leave Unit'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
     </View>
   );
 };
@@ -524,11 +675,78 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   actionButtonPrimary: { backgroundColor: '#007AFF' },
+  actionButtonDanger: { backgroundColor: '#FF3B3020', borderWidth: 1, borderColor: '#FF3B30' },
   actionIcon: { fontSize: 24, marginBottom: 6 },
   actionLabel: { fontSize: 12, fontWeight: '600', color: '#333' },
   actionLabelPrimary: { color: '#fff' },
+  actionLabelDanger: { color: '#FF3B30' },
   skeletonCard: { backgroundColor: '#fff', borderRadius: 10, padding: 16, marginBottom: 8 },
   skeletonLine: { backgroundColor: '#e8e8e8', borderRadius: 4 },
+  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, backgroundColor: '#007AFF20' },
+  badgeText: { fontSize: 12, fontWeight: '600', color: '#007AFF', textTransform: 'capitalize' },
+  // Lease styles
+  leaseCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 16,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  leaseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  leaseTitle: { fontSize: 18, fontWeight: '700', color: '#000' },
+  leaseDetails: { gap: 12 },
+  leaseRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  leaseLabel: { fontSize: 14, color: '#666' },
+  leaseValue: { fontSize: 14, fontWeight: '600', color: '#000' },
+  viewDocButton: { 
+    marginTop: 16, 
+    backgroundColor: '#007AFF', 
+    paddingVertical: 12, 
+    borderRadius: 8, 
+    alignItems: 'center' 
+  },
+  viewDocButtonText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  modalIcon: { fontSize: 48, marginBottom: 16 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#000', marginBottom: 8 },
+  modalText: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 16, lineHeight: 20 },
+  modalList: { alignSelf: 'stretch', marginBottom: 20 },
+  modalListItem: { fontSize: 13, color: '#666', marginBottom: 4 },
+  modalButtons: { flexDirection: 'row', gap: 12 },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  modalCancelButtonText: { fontSize: 14, fontWeight: '600', color: '#333' },
+  modalConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+  },
+  modalConfirmButtonText: { fontSize: 14, fontWeight: '600', color: '#fff' },
 });
 
 export default TenantDashboard;

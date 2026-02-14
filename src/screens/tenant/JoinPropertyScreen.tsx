@@ -15,6 +15,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { useMembership } from '@/hooks/useQueries';
 import { supabase } from '@/services/supabase';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
@@ -22,6 +23,7 @@ export default function JoinPropertyScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { refreshMembership, isJoined } = useMembership();
 
   const [joinCode, setJoinCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -88,6 +90,16 @@ export default function JoinPropertyScreen() {
       return;
     }
 
+    // Pre-check: prevent duplicate joins
+    if (isJoined) {
+      Alert.alert(
+        'Already Joined',
+        'You are already a member of a property. Leave your current property first to join a new one.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -109,9 +121,13 @@ export default function JoinPropertyScreen() {
         return;
       }
 
-      // Invalidate relevant queries so landlord and tenant dashboards update
-      queryClient.invalidateQueries({ queryKey: ['tenant-property'] });
-      queryClient.invalidateQueries({ queryKey: ['tenant'] });
+      // CRITICAL: Refresh membership state and WAIT for it to complete
+      // This ensures the dashboard shows updated data when we navigate back
+      console.log('[JoinProperty] Join successful, refreshing membership...');
+      await refreshMembership();
+      console.log('[JoinProperty] Membership refreshed');
+
+      // Also invalidate other related queries
       queryClient.invalidateQueries({ queryKey: ['units'] });
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       if (result.property_id) {

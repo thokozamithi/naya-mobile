@@ -13,17 +13,19 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
-import { useMessages } from '@/hooks/useData';
-import { supabase } from '@/services/supabase';
+import { useMembership, usePropertyMessages, useSendMessage, useLandlordProfile } from '@/hooks/useQueries';
 import { formatTime } from '@/lib/utils';
 import { DashboardHeader } from '@/components/DashboardHeader';
 
 export default function MessagingScreen({ navigation }: any) {
   const { user, signOut, activeRole } = useAuth();
-  const { data: messages = [], isLoading, refetch } = useMessages(user?.id);
+  const { isJoined, activeProperty, activeUnit, landlordId, isLoading: membershipLoading } = useMembership();
+  const { data: messages = [], isLoading, refetch } = usePropertyMessages();
+  const { data: landlordProfile } = useLandlordProfile();
+  const sendMessageMutation = useSendMessage();
+  
   const [newMessage, setNewMessage] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -34,7 +36,7 @@ export default function MessagingScreen({ navigation }: any) {
 
   // Memoize conversation grouping to avoid recalculating on every render
   const conversations = useMemo(() => {
-    if (!user?.id) return [];
+    if (!user?.id || !isJoined) return [];
 
     const grouped = messages.reduce((acc: any[], message: any) => {
       const otherUserId =
@@ -64,7 +66,7 @@ export default function MessagingScreen({ navigation }: any) {
     );
 
     return grouped;
-  }, [messages, user?.id]);
+  }, [messages, user?.id, isJoined]);
 
   // Memoize selected conversation messages
   const selectedConvMessages = useMemo(() => {
@@ -90,22 +92,71 @@ export default function MessagingScreen({ navigation }: any) {
     );
   }
 
+  // Show loading while checking membership
+  if (membershipLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Messages</Text>
+        </View>
+        <View style={styles.emptyState}>
+          <ActivityIndicator size="large" color="#007AFF" />
+        </View>
+      </View>
+    );
+  }
+
+  // Show gate if not joined to a property
+  if (!isJoined) {
+    return (
+      <>
+        <DashboardHeader
+          onLogoPress={handleLogoPress}
+          onRoleSwitch={handleRoleSwitch}
+          onSignOut={handleSignOut}
+          userName={user?.email}
+          role={activeRole || undefined}
+        />
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Messages</Text>
+          </View>
+          <View style={styles.emptyState}>
+            <Text style={{ fontSize: 40, marginBottom: 12 }}>🏠</Text>
+            <Text style={styles.emptyStateTitle}>Join a property first</Text>
+            <Text style={styles.emptyStateText}>
+              You need to be joined to a property to send messages to your landlord.
+            </Text>
+            <TouchableOpacity
+              style={styles.joinButton}
+              onPress={() => navigation?.navigate?.('JoinProperty')}
+            >
+              <Text style={styles.joinButtonText}>Join Property</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </>
+    );
+  }
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
 
-    setSending(true);
     try {
-      await supabase.from('messages').insert({
-        sender_id: user.id,
-        receiver_id: selectedConversation,
-        content: newMessage,
+      await sendMessageMutation.mutateAsync({
+        receiverId: selectedConversation,
+        content: newMessage.trim(),
       });
       setNewMessage('');
-      refetch();
     } catch (error) {
       console.error('Error sending message:', error);
-    } finally {
-      setSending(false);
+    }
+  };
+  
+  // Start conversation with landlord
+  const handleStartConversation = () => {
+    if (landlordId) {
+      setSelectedConversation(landlordId);
     }
   };
 
@@ -125,6 +176,14 @@ export default function MessagingScreen({ navigation }: any) {
     );
   }, [user]);
 
+  // Get display name for conversation partner
+  const getPartnerName = (otherUserId: string) => {
+    if (otherUserId === landlordId && landlordProfile) {
+      return landlordProfile.full_name || 'Your Landlord';
+    }
+    return otherUserId.slice(0, 8) + '...';
+  };
+
   const renderConversationItem = useCallback(({ item }: { item: any }) => (
     <TouchableOpacity
       style={styles.conversationItem}
@@ -132,13 +191,13 @@ export default function MessagingScreen({ navigation }: any) {
     >
       <View style={styles.avatarPlaceholder}>
         <Text style={styles.avatarText}>
-          {item.otherUserId.charAt(0).toUpperCase()}
+          {item.otherUserId === landlordId ? 'L' : item.otherUserId.charAt(0).toUpperCase()}
         </Text>
       </View>
       <View style={styles.conversationInfo}>
         <View style={styles.conversationHeader}>
           <Text style={styles.conversationName} numberOfLines={1}>
-            {item.otherUserId.slice(0, 8)}...
+            {getPartnerName(item.otherUserId)}
           </Text>
           <Text style={styles.conversationTime}>
             {formatTime(item.lastMessage.created_at)}
@@ -153,6 +212,7 @@ export default function MessagingScreen({ navigation }: any) {
   ), [user]);
 
   if (selectedConversation) {
+    const partnerName = getPartnerName(selectedConversation);
     return (
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
@@ -163,7 +223,7 @@ export default function MessagingScreen({ navigation }: any) {
             <TouchableOpacity onPress={() => setSelectedConversation(null)}>
               <Text style={styles.backButton}>Back</Text>
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Chat</Text>
+            <Text style={styles.headerTitle}>{partnerName}</Text>
             <View style={{ width: 50 }} />
           </View>
 
@@ -186,14 +246,14 @@ export default function MessagingScreen({ navigation }: any) {
               value={newMessage}
               onChangeText={setNewMessage}
               multiline
-              editable={!sending}
+              editable={!sendMessageMutation.isPending}
             />
             <TouchableOpacity
-              style={[styles.sendButton, sending && styles.sendButtonDisabled]}
+              style={[styles.sendButton, sendMessageMutation.isPending && styles.sendButtonDisabled]}
               onPress={handleSendMessage}
-              disabled={sending || !newMessage.trim()}
+              disabled={sendMessageMutation.isPending || !newMessage.trim()}
             >
-              {sending ? (
+              {sendMessageMutation.isPending ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={styles.sendButtonText}>Send</Text>
@@ -243,8 +303,16 @@ export default function MessagingScreen({ navigation }: any) {
             <Text style={{ fontSize: 40, marginBottom: 12 }}>💬</Text>
             <Text style={styles.emptyStateTitle}>No messages yet</Text>
             <Text style={styles.emptyStateText}>
-              Start a conversation by contacting a specialist
+              Start a conversation with your landlord
             </Text>
+            {landlordId && (
+              <TouchableOpacity
+                style={styles.joinButton}
+                onPress={handleStartConversation}
+              >
+                <Text style={styles.joinButtonText}>Message Landlord</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           <FlatList
@@ -314,6 +382,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+  },
+  joinButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  joinButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   conversationItem: {
     flexDirection: 'row',

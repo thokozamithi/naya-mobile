@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
-import { useTenantProperty, useCreatePayment } from '@/hooks/useData';
+import { useCreatePayment } from '@/hooks/useData';
+import { useMembership } from '@/hooks/useQueries';
 
 const PAYMENT_METHODS = [
   { value: 'credit_card', label: 'Credit Card', icon: '💳' },
@@ -27,7 +28,8 @@ export default function PayRentScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { user } = useAuth();
-  const { property, unit } = useTenantProperty();
+  // Use the centralized membership hook
+  const { isJoined, activeProperty, activeUnit, isLoading: membershipLoading } = useMembership();
   const createPayment = useCreatePayment();
 
   // Get current month and year for payment period
@@ -43,10 +45,10 @@ export default function PayRentScreen() {
 
   // Pre-fill amount from unit's monthly rent
   useEffect(() => {
-    if (unit?.monthly_rent) {
-      setAmount(unit.monthly_rent.toString());
+    if (activeUnit?.monthly_rent) {
+      setAmount(activeUnit.monthly_rent.toString());
     }
-  }, [unit]);
+  }, [activeUnit]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -69,7 +71,7 @@ export default function PayRentScreen() {
       return;
     }
 
-    if (!property?.id) {
+    if (!activeProperty?.id) {
       Alert.alert('Error', 'Property information not found. Please join a property first.');
       return;
     }
@@ -82,8 +84,8 @@ export default function PayRentScreen() {
 
       await createPayment.mutateAsync({
         user_id: user!.id,
-        property_id: property.id,
-        unit_id: unit?.id || null,
+        property_id: activeProperty.id,
+        unit_id: activeUnit?.id || null,
         amount: parseFloat(amount),
         payment_type: 'rent',
         payment_method: paymentMethod!,
@@ -114,7 +116,8 @@ export default function PayRentScreen() {
     }
   };
 
-  if (!property) {
+  // Loading state
+  if (membershipLoading) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -124,9 +127,27 @@ export default function PayRentScreen() {
           <Text style={styles.title}>Pay Rent</Text>
         </View>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorIcon}>⚠️</Text>
-          <Text style={styles.errorText}>Not linked to a property</Text>
-          <Text style={styles.errorSubtext}>Please join a property before making a payment</Text>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.errorSubtext}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Not joined state
+  if (!isJoined || !activeProperty) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Pay Rent</Text>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>🏠</Text>
+          <Text style={styles.errorText}>Join a property first</Text>
+          <Text style={styles.errorSubtext}>You need to join a property before making rent payments</Text>
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => navigation.navigate('JoinProperty')}
@@ -154,11 +175,11 @@ export default function PayRentScreen() {
         {/* Property Info Card */}
         <View style={styles.infoCard}>
           <Text style={styles.infoLabel}>Property</Text>
-          <Text style={styles.infoValue}>{property.name}</Text>
-          {unit && (
+          <Text style={styles.infoValue}>{activeProperty.name}</Text>
+          {activeUnit && (
             <>
               <Text style={[styles.infoLabel, { marginTop: 8 }]}>Unit</Text>
-              <Text style={styles.infoValue}>{unit.unit_name}</Text>
+              <Text style={styles.infoValue}>{activeUnit.unit_name}</Text>
             </>
           )}
           <Text style={[styles.infoLabel, { marginTop: 8 }]}>Payment Period</Text>
@@ -182,8 +203,8 @@ export default function PayRentScreen() {
             />
           </View>
           {errors.amount && <Text style={styles.errorMessage}>{errors.amount}</Text>}
-          {unit?.monthly_rent && (
-            <Text style={styles.hint}>Monthly rent: ${unit.monthly_rent}/mo</Text>
+          {activeUnit?.monthly_rent && (
+            <Text style={styles.hint}>Monthly rent: ${activeUnit.monthly_rent}/mo</Text>
           )}
         </View>
 

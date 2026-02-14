@@ -48,7 +48,8 @@ export const useMembership = () => {
     data: tenantRecord, 
     isLoading: membershipLoading,
     refetch: refetchMembership,
-    error: membershipError
+    error: membershipError,
+    isFetching: membershipFetching
   } = useQuery({
     queryKey: ['tenant-membership', user?.id],
     queryFn: async () => {
@@ -69,7 +70,9 @@ export const useMembership = () => {
       return data as TenantMembership;
     },
     enabled: !!user?.id,
-    staleTime: 30000, // Consider fresh for 30 seconds
+    staleTime: 0, // Always refetch - critical for join/leave sync
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Get associated property
@@ -88,6 +91,8 @@ export const useMembership = () => {
       return data as ActiveProperty;
     },
     enabled: !!tenantRecord?.property_id,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // Get associated unit
@@ -106,6 +111,8 @@ export const useMembership = () => {
       return data as ActiveUnit;
     },
     enabled: !!tenantRecord?.unit_id,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // Computed values
@@ -115,12 +122,21 @@ export const useMembership = () => {
 
   // Refresh function to be called after join/unjoin
   const refreshMembership = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['tenant-membership'] });
-    await queryClient.invalidateQueries({ queryKey: ['tenant-active-property'] });
-    await queryClient.invalidateQueries({ queryKey: ['tenant-active-unit'] });
-    await queryClient.invalidateQueries({ queryKey: ['tenant'] });
-    await queryClient.invalidateQueries({ queryKey: ['tenant-property'] });
-    return refetchMembership();
+    // Invalidate all tenant-related queries so they refetch with fresh data
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['tenant-membership'] }),
+      queryClient.invalidateQueries({ queryKey: ['tenant-active-property'] }),
+      queryClient.invalidateQueries({ queryKey: ['tenant-active-unit'] }),
+      queryClient.invalidateQueries({ queryKey: ['tenant-lease'] }),
+      queryClient.invalidateQueries({ queryKey: ['tenant-maintenance-requests'] }),
+      queryClient.invalidateQueries({ queryKey: ['property-messages'] }),
+      queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] }),
+    ]);
+
+    // Force refetch membership and wait for it to complete
+    // Dependent queries (property, unit) will auto-refetch when tenantRecord changes
+    const result = await refetchMembership();
+    return result;
   }, [queryClient, refetchMembership]);
 
   return { 
@@ -131,6 +147,7 @@ export const useMembership = () => {
     // Computed flags
     isJoined,
     isLoading,
+    isFetching: membershipFetching,
     
     // Related data
     activeProperty,
@@ -342,5 +359,120 @@ export const usePropertyMaintenanceRequests = (propertyId: string | null) => {
       return data || [];
     },
     enabled: !!propertyId,
+  });
+};
+
+/**
+ * usePropertyMessages - Hook to get messages for a specific property
+ * Scoped by property_id and user participation
+ */
+export const usePropertyMessages = () => {
+  const { user } = useAuth();
+  const { activeProperty } = useMembership();
+
+  return useQuery({
+    queryKey: ['property-messages', activeProperty?.id, user?.id],
+    queryFn: async () => {
+      if (!user?.id || !activeProperty?.id) return [];
+
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('property_id', activeProperty.id)
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id && !!activeProperty?.id,
+  });
+};
+
+/**
+ * useSendMessage - Hook to send a message
+ */
+export const useSendMessage = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { activeProperty, activeUnit, landlordId } = useMembership();
+
+  return useMutation({
+    mutationFn: async ({ receiverId, content }: { receiverId: string; content: string }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      if (!activeProperty?.id) throw new Error('You must be joined to a property to send messages');
+
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          property_id: activeProperty.id,
+          unit_id: activeUnit?.id || null,
+          sender_id: user.id,
+          receiver_id: receiverId,
+          content,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['property-messages'] });
+    },
+  });
+};
+
+/**
+ * useUnreadMessageCount - Hook to get unread message count
+ */
+export const useUnreadMessageCount = () => {
+  const { user } = useAuth();
+  const { activeProperty } = useMembership();
+
+  return useQuery({
+    queryKey: ['unread-messages-count', activeProperty?.id, user?.id],
+    queryFn: async () => {
+      if (!user?.id || !activeProperty?.id) return 0;
+
+      const { count, error } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('property_id', activeProperty.id)
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!user?.id && !!activeProperty?.id,
+  });
+};
+
+/**
+ * useLandlordProfile - Hook to get landlord profile for messaging
+ */
+export const useLandlordProfile = () => {
+  const { landlordId } = useMembership();
+
+  return useQuery({
+    queryKey: ['landlord-profile', landlordId],
+    queryFn: async () => {
+      if (!landlordId) return null;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .eq('id', landlordId)
+        .single();
+
+      if (error) {
+        // Profile might not exist, return basic info
+        if (error.code === 'PGRST116') return { id: landlordId, full_name: 'Your Landlord', email: '' };
+        throw error;
+      }
+      return data;
+    },
+    enabled: !!landlordId,
   });
 };

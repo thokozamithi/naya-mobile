@@ -132,37 +132,51 @@ create policy "messages_update_receiver"
   with check (auth.uid() = receiver_id);
 
 -- =============================================
--- PART 4: FIX MAINTENANCE_REQUESTS RLS FOR TENANTS
+-- PART 4: FIX MAINTENANCE_REQUESTS RLS FOR TENANTS (conditional)
 -- =============================================
 
--- Drop existing tenant insert policy if exists
-drop policy if exists "maintenance_requests_insert_tenant" on public.maintenance_requests;
+do $$
+begin
+  -- Only run if maintenance_requests table exists
+  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'maintenance_requests') then
+    -- Drop existing policies
+    execute 'drop policy if exists "maintenance_requests_insert_tenant" on public.maintenance_requests';
+    execute 'drop policy if exists "maintenance_requests_select_by_property" on public.maintenance_requests';
 
--- Tenant can insert maintenance requests for their property
-create policy "maintenance_requests_insert_tenant"
-  on public.maintenance_requests for insert
-  with check (
-    exists (
-      select 1 from public.tenants t
-      where t.user_id = auth.uid()
-        and t.status = 'active'
-        and t.property_id = maintenance_requests.property_id
-        and t.id = maintenance_requests.tenant_id
-    )
-  );
+    -- Tenant can insert maintenance requests for their property
+    execute $policy$
+      create policy "maintenance_requests_insert_tenant"
+        on public.maintenance_requests for insert
+        with check (
+          exists (
+            select 1 from public.tenants t
+            where t.user_id = auth.uid()
+              and t.status = 'active'
+              and t.property_id = maintenance_requests.property_id
+              and t.id = maintenance_requests.tenant_id
+          )
+        )
+    $policy$;
 
--- Add policy for tenant to view requests by property/unit
-drop policy if exists "maintenance_requests_select_by_property" on public.maintenance_requests;
-create policy "maintenance_requests_select_by_property"
-  on public.maintenance_requests for select
-  using (
-    exists (
-      select 1 from public.tenants t
-      where t.user_id = auth.uid()
-        and t.status = 'active'
-        and t.property_id = maintenance_requests.property_id
-    )
-  );
+    -- Add policy for tenant to view requests by property/unit
+    execute $policy$
+      create policy "maintenance_requests_select_by_property"
+        on public.maintenance_requests for select
+        using (
+          exists (
+            select 1 from public.tenants t
+            where t.user_id = auth.uid()
+              and t.status = 'active'
+              and t.property_id = maintenance_requests.property_id
+          )
+        )
+    $policy$;
+
+    raise notice '✅ maintenance_requests RLS policies updated';
+  else
+    raise notice '⚠️ maintenance_requests table not found, skipping RLS policies';
+  end if;
+end $$;
 
 -- =============================================
 -- PART 5: PROPERTIES RLS - Allow tenants to view their property
@@ -215,7 +229,7 @@ begin
   raise notice '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
   raise notice '✅ leave_unit() RPC function created';
   raise notice '✅ messages table created with RLS';
-  raise notice '✅ maintenance_requests RLS fixed for tenants';
+  raise notice '✅ maintenance_requests RLS (if table exists)';
   raise notice '✅ properties RLS allows tenant view';
   raise notice '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 end $$;
