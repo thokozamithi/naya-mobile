@@ -28,6 +28,7 @@ export default function ProfileSettingsScreen() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
+  const [landlordCode, setLandlordCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notifications, setNotifications] = useState(true);
@@ -51,6 +52,7 @@ export default function ProfileSettingsScreen() {
         setFullName(data.full_name || '');
         setPhone(data.phone || '');
         setBio(data.bio || '');
+        setLandlordCode(data.landlord_code || '');
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -145,6 +147,24 @@ export default function ProfileSettingsScreen() {
                 <Text style={styles.readOnlyText}>{user?.email}</Text>
               </View>
             </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>User ID</Text>
+              <View style={styles.readOnlyInput}>
+                <Text style={styles.readOnlyText} selectable>
+                  {user?.id}
+                </Text>
+              </View>
+            </View>
+            {landlordCode ? (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Landlord Code</Text>
+                <View style={styles.readOnlyInput}>
+                  <Text style={styles.readOnlyText} selectable>
+                    {landlordCode}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Full Name</Text>
               <TextInput

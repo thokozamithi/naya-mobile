@@ -18,7 +18,7 @@ const RegisterScreen = ({ navigation }: any) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('landlord');
   const [tenantJoinCode, setTenantJoinCode] = useState('');
-  const [employeeLandlordId, setEmployeeLandlordId] = useState('');
+  const [employeeLandlordCode, setEmployeeLandlordCode] = useState('');
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
 
@@ -53,8 +53,8 @@ const RegisterScreen = ({ navigation }: any) => {
       return;
     }
 
-    if (selectedRole === 'employee' && !employeeLandlordId.trim()) {
-      Alert.alert('Missing Landlord ID', 'Employee registration requires a landlord ID.');
+    if (selectedRole === 'employee' && !employeeLandlordCode.trim()) {
+      Alert.alert('Missing Landlord Code', 'Employee registration requires a landlord code.');
       return;
     }
 
@@ -62,7 +62,7 @@ const RegisterScreen = ({ navigation }: any) => {
     try {
       const result = await signUp(email, password, fullName, [selectedRole], {
         tenantJoinCode: tenantJoinCode.trim() || undefined,
-        employeeLandlordId: employeeLandlordId.trim() || undefined,
+        employeeLandlordCode: employeeLandlordCode.trim() || undefined,
       });
 
       if (result.error) {
@@ -113,7 +113,7 @@ const RegisterScreen = ({ navigation }: any) => {
               <TouchableOpacity style={styles.tabButton} onPress={() => navigation.navigate('Login')}>
                 <Text style={styles.tabText}>Sign In</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled>
+              <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled onPress={() => {}}>
                 <Text style={styles.tabTextActive}>Sign Up</Text>
               </TouchableOpacity>
             </View>
@@ -187,10 +187,10 @@ const RegisterScreen = ({ navigation }: any) => {
             {selectedRole === 'employee' && (
               <TextInput
                 style={styles.input}
-                placeholder="Landlord ID"
-                value={employeeLandlordId}
-                onChangeText={setEmployeeLandlordId}
-                autoCapitalize="none"
+                placeholder="Landlord Code"
+                value={employeeLandlordCode}
+                onChangeText={setEmployeeLandlordCode}
+                autoCapitalize="characters"
                 editable={!loading}
               />
             )}

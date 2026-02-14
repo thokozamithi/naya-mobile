@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, A
 import { useFocusEffect } from '@react-navigation/native';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { useAuth } from '@/hooks/useAuth';
+import { Linking } from 'react-native';
 import { 
   useMembership, 
   useSubscription, 
@@ -282,6 +283,7 @@ const TenantDashboard = ({ navigation }: any) => {
                   <TouchableOpacity
                     style={[styles.actionButton, { opacity: 0.5 }]}
                     disabled
+                    onPress={() => {}}
                   >
                     <Text style={styles.actionIcon}>💳</Text>
                     <Text style={styles.actionLabel}>Pay Rent</Text>
@@ -289,6 +291,7 @@ const TenantDashboard = ({ navigation }: any) => {
                   <TouchableOpacity
                     style={[styles.actionButton, { opacity: 0.5 }]}
                     disabled
+                    onPress={() => {}}
                   >
                     <Text style={styles.actionIcon}>🔧</Text>
                     <Text style={styles.actionLabel}>Report Issue</Text>
@@ -296,6 +299,7 @@ const TenantDashboard = ({ navigation }: any) => {
                   <TouchableOpacity
                     style={[styles.actionButton, { opacity: 0.5 }]}
                     disabled
+                    onPress={() => {}}
                   >
                     <Text style={styles.actionIcon}>📄</Text>
                     <Text style={styles.actionLabel}>View Lease</Text>
@@ -458,7 +462,10 @@ const TenantDashboard = ({ navigation }: any) => {
                   )}
                 </View>
                 {lease.lease_document_url && (
-                  <TouchableOpacity style={styles.viewDocButton}>
+                  <TouchableOpacity
+                    style={styles.viewDocButton}
+                    onPress={() => Linking.openURL(lease.lease_document_url)}
+                  >
                     <Text style={styles.viewDocButtonText}>View Document</Text>
                   </TouchableOpacity>
                 )}

@@ -17,7 +17,7 @@ interface AuthContextType {
     password: string,
     fullName: string,
     selectedRoles: UserRole[],
-    options?: { tenantJoinCode?: string; employeeLandlordId?: string }
+    options?: { tenantJoinCode?: string; employeeLandlordCode?: string }
   ) => Promise<{ error: Error | null; stage?: string; details?: any; needsEmailConfirmation?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -124,7 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     password: string,
     fullName: string = '',
     selectedRoles: UserRole[] = [],
-    options?: { tenantJoinCode?: string; employeeLandlordId?: string }
+    options?: { tenantJoinCode?: string; employeeLandlordCode?: string }
   ) => {
     const logSupabaseError = (stage: string, err: any) => {
       const details = {
@@ -139,8 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return details;
     };
 
-    const isValidUuid = (value: string) =>
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    const normalizeCode = (value: string) => value.trim().toUpperCase();
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -166,6 +165,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const userId = data.user.id;
+    const selectedRole = selectedRoles[0];
+    let landlordCode: string | null = null;
+
+    if (selectedRole === 'landlord') {
+      const { data: codeData, error: codeError } = await supabase
+        .rpc('generate_landlord_code');
+
+      if (codeError) {
+        return { error: codeError, stage: 'landlord_code.generate', details: logSupabaseError('landlord_code.generate', codeError) };
+      }
+      landlordCode = typeof codeData === 'string' ? codeData : null;
+      if (!landlordCode) {
+        return { error: new Error('Failed to generate landlord code.'), stage: 'landlord_code.generate' };
+      }
+    }
 
     // Insert profile if table exists
     const { error: profileError } = await supabase
@@ -174,6 +188,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         id: userId,
         full_name: fullName || '',
         email,
+        landlord_code: landlordCode,
       })
       .select()
       .single();
@@ -186,7 +201,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.warn('profiles table not found, skipping profile insert');
     }
 
-    const selectedRole = selectedRoles[0];
     if (selectedRole) {
       if (!roleTableAvailableRef.current) {
         setRoles([selectedRole]);
@@ -233,18 +247,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (selectedRole === 'employee') {
-          if (!options?.employeeLandlordId) {
-            return { error: new Error('Employee registration requires a landlord ID.'), stage: 'employees.insert' };
-          }
-          if (!isValidUuid(options.employeeLandlordId)) {
-            return { error: new Error('Invalid landlord ID format.'), stage: 'employees.insert' };
-          }
+        if (!options?.employeeLandlordCode) {
+          return { error: new Error('Employee registration requires a landlord code.'), stage: 'employees.insert' };
+        }
+
+        const code = normalizeCode(options.employeeLandlordCode);
+        const { data: landlordId, error: resolveError } = await supabase
+          .rpc('resolve_landlord_code', { p_code: code });
+
+        if (resolveError) {
+          return { error: resolveError, stage: 'landlord_code.resolve', details: logSupabaseError('landlord_code.resolve', resolveError) };
+        }
+
+        if (!landlordId) {
+          return { error: new Error('Invalid landlord code.'), stage: 'landlord_code.resolve' };
+        }
 
         const { error: employeeError } = await supabase
           .from('employees')
           .insert({
             user_id: userId,
-            landlord_id: options.employeeLandlordId,
+            landlord_id: landlordId,
             full_name: fullName || '',
             email: email || null,
             status: 'active',

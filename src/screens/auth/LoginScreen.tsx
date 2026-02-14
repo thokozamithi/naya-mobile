@@ -61,7 +61,7 @@ const LoginScreen = ({ navigation }: any) => {
             <View style={styles.content}>
               <View style={styles.logoRow}><Text style={styles.logo}>N</Text></View>
               <View style={styles.tabRow}>
-                <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled>
+                <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled onPress={() => {}}>
                   <Text style={styles.tabTextActive}>Sign In</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.tabButton} onPress={() => { setForgotMode(false); navigation.navigate('Register'); }}>
@@ -126,7 +126,7 @@ const LoginScreen = ({ navigation }: any) => {
             </TouchableOpacity>
             <View style={styles.logoRow}><Text style={styles.logo}>N</Text></View>
             <View style={styles.tabRow}>
-              <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled>
+              <TouchableOpacity style={[styles.tabButton, styles.tabActive]} disabled onPress={() => {}}>
                 <Text style={styles.tabTextActive}>Sign In</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.tabButton} onPress={() => navigation.navigate('Register')}>
