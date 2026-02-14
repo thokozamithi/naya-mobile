@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
-import { useEmployeeProjects, useAssignedMaintenanceRequests } from '@/hooks/useData';
+import { useEmployeeProjects, useAssignedMaintenanceRequests, useUpdateProject, useAddProjectNote } from '@/hooks/useData';
 import { useUserProfile } from '@/hooks/useQueries';
 import { DashboardHeader } from '@/components/DashboardHeader';
 
@@ -11,6 +11,9 @@ const EmployeeDashboard = ({ navigation }: any) => {
   const { data: maintRequests = [], isLoading: maintLoading } = useAssignedMaintenanceRequests();
   const { profile } = useUserProfile();
   const [refreshing, setRefreshing] = useState(false);
+  const [updatingProjectId, setUpdatingProjectId] = useState<string | null>(null);
+  const updateProject = useUpdateProject();
+  const addProjectNote = useAddProjectNote();
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -45,6 +48,29 @@ const EmployeeDashboard = ({ navigation }: any) => {
       case 'medium': return '#5AC8FA';
       case 'low': return '#34C759';
       default: return '#999';
+    }
+  };
+
+  const getAuthorRole = (role: string | null | undefined) => {
+    if (role === 'landlord') return 'landlord';
+    if (role === 'employee') return 'employee';
+    if (role === 'tenant') return 'tenant';
+    return 'system';
+  };
+
+  const handleQuickStatus = async (project: any, nextStatus: string) => {
+    setUpdatingProjectId(project.id);
+    try {
+      await updateProject.mutateAsync({ id: project.id, status: nextStatus });
+      await addProjectNote.mutateAsync({
+        project_id: project.id,
+        author_role: getAuthorRole(activeRole),
+        body: `Status changed to ${nextStatus.replace('_', ' ')}`,
+      });
+    } catch (err) {
+      console.error('[EmployeeDashboard] Quick status update failed:', err);
+    } finally {
+      setUpdatingProjectId(null);
     }
   };
 
@@ -85,7 +111,7 @@ const EmployeeDashboard = ({ navigation }: any) => {
 
         {/* Projects */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Projects</Text>
+          <Text style={styles.sectionTitle}>My Jobs</Text>
           {isLoading ? (
             [1, 2].map((i) => (
               <View key={i} style={styles.skeletonCard}>
@@ -123,6 +149,34 @@ const EmployeeDashboard = ({ navigation }: any) => {
                       <View style={[styles.progressMiniBar, { width: `${project.progress}%`, backgroundColor: getStatusColor(project.status) }]} />
                     </View>
                     <Text style={styles.progressMiniText}>{project.progress}%</Text>
+                  </View>
+                  <View style={styles.quickActionsRow}>
+                    {project.status === 'pending' && (
+                      <TouchableOpacity
+                        style={styles.quickButton}
+                        onPress={() => handleQuickStatus(project, 'in_progress')}
+                        disabled={updatingProjectId === project.id}
+                      >
+                        {updatingProjectId === project.id ? (
+                          <ActivityIndicator size="small" color="#0066cc" />
+                        ) : (
+                          <Text style={styles.quickButtonText}>Start</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                    {project.status === 'in_progress' && (
+                      <TouchableOpacity
+                        style={styles.quickButton}
+                        onPress={() => handleQuickStatus(project, 'completed')}
+                        disabled={updatingProjectId === project.id}
+                      >
+                        {updatingProjectId === project.id ? (
+                          <ActivityIndicator size="small" color="#0066cc" />
+                        ) : (
+                          <Text style={styles.quickButtonText}>Complete</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
                 <Text style={styles.chevron}>›</Text>
@@ -219,6 +273,9 @@ const styles = StyleSheet.create({
   progressMini: { flex: 1, height: 4, backgroundColor: '#e0e0e0', borderRadius: 2, overflow: 'hidden' },
   progressMiniBar: { height: '100%', borderRadius: 2 },
   progressMiniText: { fontSize: 11, fontWeight: '600', color: '#666', minWidth: 28, textAlign: 'right' },
+  quickActionsRow: { flexDirection: 'row', marginTop: 8, gap: 8 },
+  quickButton: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, borderWidth: 1, borderColor: '#0066cc' },
+  quickButtonText: { fontSize: 12, fontWeight: '600', color: '#0066cc' },
   chevron: { fontSize: 22, color: '#ccc', marginLeft: 8 },
   emptyCard: { backgroundColor: '#fff', borderRadius: 10, padding: 24, alignItems: 'center', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 },
   emptyIcon: { fontSize: 32, marginBottom: 8 },

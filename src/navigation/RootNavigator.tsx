@@ -303,6 +303,7 @@ const EmployeeTabs = () => (
     <Stack.Screen name="EmployeeTabsStack" component={EmployeeTabsNavigator} />
     <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} options={{ headerShown: true }} />
+    <Stack.Screen name="MaintenanceRequestDetail" component={MaintenanceRequestDetailScreen} options={{ headerShown: true, title: 'Maintenance Request' }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
     <Stack.Screen name="SpecialistDirectory" component={SpecialistDirectoryScreen} options={{ headerShown: true }} />

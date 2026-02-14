@@ -8,123 +8,186 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-  Modal,
-} from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { useProjectDetail, useProjectUpdates, useUpdateProject, useAddProjectUpdate, useCreateThread } from '@/hooks/useData';
-import { useAuth } from '@/hooks/useAuth';
-import { formatDate, formatTime } from '@/lib/utils';
+        <View style={styles.tabRow}>
+          {['overview', 'notes', 'chat'].map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
+              onPress={() => setActiveTab(tab as 'overview' | 'notes' | 'chat')}
+            >
+              <Text style={[styles.tabButtonText, activeTab === tab && styles.tabButtonTextActive]}>
+                {tab === 'overview' ? 'Overview' : tab === 'notes' ? 'Notes' : 'Chat'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-interface RouteParams {
-  projectId: string;
-}
+        <View style={styles.content}>
+          {activeTab === 'overview' && (
+            <>
+              {project.description && (
+                <View style={styles.section}>
+                  <Text style={styles.label}>Description</Text>
+                  <Text style={styles.value}>{project.description}</Text>
+                </View>
+              )}
 
-const STATUS_OPTIONS = ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled'];
-const PROGRESS_OPTIONS = [0, 10, 25, 50, 75, 90, 100];
+              <View style={styles.section}>
+                <View style={styles.progressHeader}>
+                  <Text style={styles.label}>Progress</Text>
+                  <Text style={styles.progressText}>{project.progress}%</Text>
+                </View>
+                <View style={styles.progressBarContainer}>
+                  <View style={[styles.progressBar, { width: `${project.progress}%`, backgroundColor: getStatusColor(project.status) }]} />
+                </View>
+              </View>
 
-export default function ProjectDetailScreen() {
-  const route = useRoute();
-  const navigation = useNavigation<any>();
-  const { projectId } = (route.params as RouteParams) || {};
-  const { activeRole, user } = useAuth();
+              <View style={styles.detailsRow}>
+                <View style={styles.detailCard}>
+                  <Text style={styles.detailLabel}>Status</Text>
+                  <Text style={[styles.detailValue, { color: getStatusColor(project.status) }]}>
+                    {project.status.replace('_', ' ')}
+                  </Text>
+                </View>
+                <View style={styles.detailCard}>
+                  <Text style={styles.detailLabel}>Priority</Text>
+                  <Text style={[styles.detailValue, { color: getPriorityColor(project.priority) }]}>
+                    {project.priority}
+                  </Text>
+                </View>
+                {project.budget !== null && project.budget !== undefined && (
+                  <View style={styles.detailCard}>
+                    <Text style={styles.detailLabel}>Budget</Text>
+                    <Text style={styles.detailValue}>${Number(project.budget).toLocaleString()}</Text>
+                  </View>
+                )}
+              </View>
 
-  const { project, isLoading, error, refetch } = useProjectDetail(projectId);
-  const { data: updates = [] } = useProjectUpdates(projectId);
-  const updateProjectMutation = useUpdateProject();
-  const addUpdateMutation = useAddProjectUpdate();
-  const createThreadMutation = useCreateThread();
+              <View style={styles.row}>
+                {project.started_at && (
+                  <View style={styles.columnSection}>
+                    <Text style={styles.label}>Started</Text>
+                    <Text style={styles.value}>{formatDate(project.started_at)}</Text>
+                  </View>
+                )}
+                {project.completed_at && (
+                  <View style={styles.columnSection}>
+                    <Text style={styles.label}>Completed</Text>
+                    <Text style={styles.value}>{formatDate(project.completed_at)}</Text>
+                  </View>
+                )}
+              </View>
 
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showProgressModal, setShowProgressModal] = useState(false);
-  const [showNoteModal, setShowNoteModal] = useState(false);
-  const [noteText, setNoteText] = useState('');
-  const [isCreatingThread, setIsCreatingThread] = useState(false);
+              {project.assignments && project.assignments.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.label}>Assigned Team</Text>
+                  {project.assignments.map((a: any) => (
+                    <View key={a.id} style={styles.assignmentCard}>
+                      <View style={styles.assignmentAvatar}>
+                        <Text style={styles.assignmentAvatarText}>
+                          {(a.employee?.full_name || '?').charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.assignmentName}>{a.employee?.full_name || 'Unknown'}</Text>
+                        <Text style={styles.assignmentRole}>{a.role} • {a.employee?.email || ''}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
 
-  if (!projectId) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Project not found</Text>
-      </View>
-    );
-  }
+              {canEdit && (
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    style={styles.primaryButton}
+                    onPress={() => setShowStatusModal(true)}
+                  >
+                    <Text style={styles.buttonText}>Update Status</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    onPress={() => setShowProgressModal(true)}
+                  >
+                    <Text style={styles.secondaryButtonText}>Update Progress</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          )}
 
-  if (isLoading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#0066cc" />
-      </View>
-    );
-  }
+          {activeTab === 'notes' && (
+            <View style={styles.section}>
+              {canEdit && (
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => setShowNoteModal(true)}
+                >
+                  <Text style={styles.secondaryButtonText}>Add Note</Text>
+                </TouchableOpacity>
+              )}
+              {notes.length === 0 ? (
+                <Text style={styles.emptyText}>No notes yet</Text>
+              ) : (
+                notes.slice(0, 30).map((note: any) => (
+                  <View key={note.id} style={styles.noteItem}>
+                    <View style={styles.noteDot} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.noteMeta}>
+                        {note.author_role.toUpperCase()} • {formatTime(note.created_at)}
+                      </Text>
+                      <Text style={styles.noteBody}>{note.body}</Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
 
-  if (error || !project) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Error loading project details</Text>
-      </View>
-    );
-  }
-
-  const handleStatusChange = async (newStatus: string) => {
-    const oldStatus = project.status;
-    if (newStatus === oldStatus) {
-      setShowStatusModal(false);
-      return;
-    }
-
-    try {
-      await updateProjectMutation.mutateAsync({ id: project.id, status: newStatus });
-      await addUpdateMutation.mutateAsync({
-        project_id: project.id,
-        status_change: `${oldStatus}→${newStatus}`,
-        note: `Status changed to ${newStatus.replace('_', ' ')}`,
-      });
-      await refetch();
-      setShowStatusModal(false);
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update status');
-    }
-  };
-
-  const handleProgressChange = async (newProgress: number) => {
-    try {
-      await updateProjectMutation.mutateAsync({ id: project.id, progress: newProgress });
-      await addUpdateMutation.mutateAsync({
-        project_id: project.id,
-        progress_change: newProgress,
-        note: `Progress updated to ${newProgress}%`,
-      });
-      await refetch();
-      setShowProgressModal(false);
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update progress');
-    }
-  };
-
-  const handleAddNote = async () => {
-    if (!noteText.trim()) return;
-    try {
-      await addUpdateMutation.mutateAsync({
-        project_id: project.id,
-        note: noteText.trim(),
-      });
-      setNoteText('');
-      setShowNoteModal(false);
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to add note');
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return '#34C759';
-      case 'in_progress': return '#FF9500';
-      case 'pending': return '#5AC8FA';
-      case 'on_hold': return '#FF3B30';
-      case 'cancelled': return '#999';
-      default: return '#999';
-    }
-  };
-
+          {activeTab === 'chat' && (
+            <View style={styles.section}>
+              {!thread ? (
+                <Text style={styles.emptyText}>Chat thread is not available yet.</Text>
+              ) : (
+                <>
+                  {messagesLoading ? (
+                    <ActivityIndicator size="small" color="#0066cc" />
+                  ) : messages.length === 0 ? (
+                    <Text style={styles.emptyText}>No messages yet</Text>
+                  ) : (
+                    messages.map((msg: any) => (
+                      <View
+                        key={msg.id}
+                        style={[
+                          styles.chatBubble,
+                          msg.sender_id === user?.id ? styles.chatBubbleOwn : styles.chatBubbleOther,
+                        ]}
+                      >
+                        <Text style={styles.chatBody}>{msg.body}</Text>
+                        <Text style={styles.chatTime}>{formatTime(msg.created_at)}</Text>
+                      </View>
+                    ))
+                  )}
+                  <View style={styles.chatInputRow}>
+                    <TextInput
+                      style={styles.chatInput}
+                      placeholder="Type a message..."
+                      value={messageText}
+                      onChangeText={setMessageText}
+                    />
+                    <TouchableOpacity
+                      style={[styles.chatSend, (!messageText.trim() || sendMessageMutation.isPending) && { opacity: 0.6 }]}
+                      onPress={handleSendMessage}
+                      disabled={!messageText.trim() || sendMessageMutation.isPending}
+                    >
+                      <Text style={styles.chatSendText}>Send</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
+          )}
+        </View>
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'urgent': return '#FF3B30';
@@ -135,53 +198,19 @@ export default function ProjectDetailScreen() {
     }
   };
 
+  const getAuthorRole = (role: string | null | undefined) => {
+    if (role === 'landlord') return 'landlord';
+    if (role === 'employee') return 'employee';
+    if (role === 'tenant') return 'tenant';
+    return 'system';
+  };
+
   const daysUntilDue = project.due_date
     ? Math.ceil((new Date(project.due_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
-  const canEdit = activeRole === 'landlord' || activeRole === 'employee' || activeRole === 'builder';
-  const canMessageTeam = activeRole === 'landlord' || activeRole === 'employee';
-
-  const handleMessageTeam = async () => {
-    if (!user?.id || !project) return;
-
-    try {
-      setIsCreatingThread(true);
-
-      if (activeRole === 'employee') {
-        const thread = await createThreadMutation.mutateAsync({
-          subject: `Project: ${project.title}`,
-          participantIds: [project.landlord_id],
-          projectId: project.id,
-          initialMessage: `Hi, I have an update about ${project.title}.`,
-        });
-        navigation.navigate('ThreadMessaging', { threadId: thread.id });
-        return;
-      }
-
-      const employeeUserIds = (project.assignments || [])
-        .map((a: any) => a.employee?.user_id)
-        .filter((id: string | null | undefined) => !!id) as string[];
-
-      if (employeeUserIds.length === 0) {
-        Alert.alert('No team members', 'Assign employees with app accounts to start a thread.');
-        return;
-      }
-
-      const thread = await createThreadMutation.mutateAsync({
-        subject: `Project: ${project.title}`,
-        participantIds: employeeUserIds,
-        projectId: project.id,
-        initialMessage: `Team, please share any updates on ${project.title}.`,
-      });
-      navigation.navigate('ThreadMessaging', { threadId: thread.id });
-    } catch (err: any) {
-      console.error('Failed to create thread:', err);
-      Alert.alert('Error', err.message || 'Failed to start a conversation');
-    } finally {
-      setIsCreatingThread(false);
-    }
-  };
+  const canEdit = activeRole === 'landlord' || activeRole === 'employee';
+  const canUpdateProgress = activeRole === 'landlord';
 
   return (
     <>
@@ -304,12 +333,14 @@ export default function ProjectDetailScreen() {
               >
                 <Text style={styles.buttonText}>Update Status</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => setShowProgressModal(true)}
-              >
-                <Text style={styles.secondaryButtonText}>Update Progress</Text>
-              </TouchableOpacity>
+                  {canUpdateProgress && (
+                    <TouchableOpacity
+                      style={styles.secondaryButton}
+                      onPress={() => setShowProgressModal(true)}
+                    >
+                      <Text style={styles.secondaryButtonText}>Update Progress</Text>
+                    </TouchableOpacity>
+                  )}
               <TouchableOpacity
                 style={styles.secondaryButton}
                 onPress={() => setShowNoteModal(true)}
@@ -425,10 +456,10 @@ export default function ProjectDetailScreen() {
             <TouchableOpacity
               style={[styles.primaryButton, !noteText.trim() && { opacity: 0.5 }]}
               onPress={handleAddNote}
-              disabled={!noteText.trim() || addUpdateMutation.isPending}
+              disabled={!noteText.trim() || addNoteMutation.isPending}
             >
               <Text style={styles.buttonText}>
-                {addUpdateMutation.isPending ? 'Saving...' : 'Save Note'}
+                {addNoteMutation.isPending ? 'Saving...' : 'Save Note'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.modalCancel} onPress={() => { setShowNoteModal(false); setNoteText(''); }}>
@@ -456,6 +487,11 @@ const styles = StyleSheet.create({
   priorityText: { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
   dueDate: { fontSize: 12, color: '#666' },
   content: { padding: 16 },
+  tabRow: { flexDirection: 'row', paddingHorizontal: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
+  tabButton: { paddingVertical: 12, paddingHorizontal: 10, marginRight: 8 },
+  tabButtonActive: { borderBottomWidth: 2, borderBottomColor: '#0066cc' },
+  tabButtonText: { fontSize: 14, color: '#666', fontWeight: '600' },
+  tabButtonTextActive: { color: '#0066cc' },
   section: { marginBottom: 16 },
   label: { fontSize: 12, color: '#999', fontWeight: '600', marginBottom: 6, textTransform: 'uppercase' },
   value: { fontSize: 15, color: '#333', lineHeight: 22 },
@@ -481,12 +517,19 @@ const styles = StyleSheet.create({
   secondaryButtonText: { fontSize: 15, fontWeight: '600', color: '#0066cc' },
   errorText: { fontSize: 16, color: '#d32f2f', textAlign: 'center', marginTop: 20 },
   emptyText: { fontSize: 14, color: '#999', textAlign: 'center', paddingVertical: 16 },
-  activityItem: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  activityDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#5AC8FA', marginRight: 10, marginTop: 4 },
-  activityStatus: { fontSize: 13, fontWeight: '600', color: '#333', textTransform: 'capitalize' },
-  activityProgress: { fontSize: 13, color: '#0066cc', fontWeight: '600' },
-  activityNote: { fontSize: 13, color: '#333', marginTop: 2 },
-  activityTime: { fontSize: 11, color: '#999', marginTop: 2 },
+  noteItem: { flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  noteDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#5AC8FA', marginRight: 10, marginTop: 4 },
+  noteMeta: { fontSize: 11, color: '#999', marginBottom: 2, fontWeight: '600' },
+  noteBody: { fontSize: 13, color: '#333', lineHeight: 18 },
+  chatBubble: { maxWidth: '85%', borderRadius: 10, padding: 10, marginBottom: 8 },
+  chatBubbleOwn: { backgroundColor: '#0066cc22', alignSelf: 'flex-end' },
+  chatBubbleOther: { backgroundColor: '#fff', alignSelf: 'flex-start', borderWidth: 1, borderColor: '#eee' },
+  chatBody: { fontSize: 14, color: '#333' },
+  chatTime: { fontSize: 10, color: '#999', marginTop: 4, textAlign: 'right' },
+  chatInputRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 },
+  chatInput: { flex: 1, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
+  chatSend: { backgroundColor: '#0066cc', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8 },
+  chatSendText: { color: '#fff', fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: '70%' },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#000', marginBottom: 16 },

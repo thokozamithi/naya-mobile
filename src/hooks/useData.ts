@@ -45,6 +45,7 @@ export interface Project {
   budget: number | null;
   progress: number;
   property_id: string | null;
+  unit_id?: string | null;
   due_date: string | null;
   created_at: string;
   updated_at: string;
@@ -76,13 +77,27 @@ export interface Employee {
   updated_at: string;
 }
 
-export interface ProjectUpdate {
+export interface ProjectNote {
   id: string;
   project_id: string;
   author_id: string;
-  note: string | null;
-  status_change: string | null;
-  progress_change: number | null;
+  author_role: string;
+  visibility: string;
+  body: string;
+  created_at: string;
+}
+
+export interface ProjectThread {
+  id: string;
+  project_id: string;
+  created_at: string;
+}
+
+export interface ProjectMessage {
+  id: string;
+  thread_id: string;
+  sender_id: string;
+  body: string;
   created_at: string;
 }
 
@@ -449,23 +464,89 @@ export const useProjectDetail = (projectId: string | null | undefined) => {
   return { project, isLoading, error, refetch };
 };
 
-// Project updates (activity log)
-export const useProjectUpdates = (projectId: string | null | undefined) => {
+// Project notes (timeline)
+export const useProjectNotes = (projectId: string | null | undefined) => {
   return useQuery({
-    queryKey: ['project-updates', projectId],
+    queryKey: ['project-notes', projectId],
     queryFn: async () => {
       if (!projectId) return [];
 
       const { data, error } = await supabase
-        .from('project_updates')
+        .from('project_notes')
         .select('*')
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return (data || []) as ProjectUpdate[];
+      return (data || []) as ProjectNote[];
     },
     enabled: !!projectId,
+  });
+};
+
+export const useProjectThread = (projectId: string | null | undefined) => {
+  return useQuery({
+    queryKey: ['project-thread', projectId],
+    queryFn: async () => {
+      if (!projectId) return null;
+
+      const { data, error } = await supabase
+        .from('project_threads')
+        .select('*')
+        .eq('project_id', projectId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as ProjectThread | null;
+    },
+    enabled: !!projectId,
+  });
+};
+
+export const useProjectMessages = (threadId: string | null | undefined) => {
+  return useQuery({
+    queryKey: ['project-messages', threadId],
+    queryFn: async () => {
+      if (!threadId) return [];
+
+      const { data, error } = await supabase
+        .from('project_messages')
+        .select('*')
+        .eq('thread_id', threadId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      return (data || []) as ProjectMessage[];
+    },
+    enabled: !!threadId,
+    refetchInterval: 5000,
+  });
+};
+
+export const useSendProjectMessage = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ threadId, body }: { threadId: string; body: string }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('project_messages')
+        .insert({
+          thread_id: threadId,
+          sender_id: user.id,
+          body,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as ProjectMessage;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['project-messages', data.thread_id] });
+    },
   });
 };
 
@@ -1125,21 +1206,27 @@ export const useCreateProject = () => {
     }) => {
       if (!user?.id) throw new Error('Not authenticated');
 
+      const payload = {
+        landlord_id: user.id,
+        title: project.title,
+        description: project.description || null,
+        property_id: project.property_id || null,
+        priority: project.priority || 'medium',
+        budget: project.budget || null,
+        due_date: project.due_date || null,
+        status: 'pending',
+        progress: 0,
+      };
+
+      console.log('[useCreateProject] Payload:', payload);
+
       const { data, error } = await supabase
         .from('projects')
-        .insert({
-          landlord_id: user.id,
-          title: project.title,
-          description: project.description || null,
-          property_id: project.property_id || null,
-          priority: project.priority || 'medium',
-          budget: project.budget || null,
-          due_date: project.due_date || null,
-          status: 'pending',
-          progress: 0,
-        })
+        .insert(payload)
         .select()
         .single();
+
+      console.log('[useCreateProject] Response:', { data, error });
 
       if (error) {
         console.error('[useCreateProject] Error:', error);
@@ -1188,39 +1275,39 @@ export const useUpdateProject = () => {
   });
 };
 
-export const useAddProjectUpdate = () => {
+export const useAddProjectNote = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (update: {
+    mutationFn: async (note: {
       project_id: string;
-      note?: string | null;
-      status_change?: string | null;
-      progress_change?: number | null;
+      body: string;
+      author_role: string;
+      visibility?: 'internal' | 'tenant';
     }) => {
       if (!user?.id) throw new Error('Not authenticated');
 
       const { data, error } = await supabase
-        .from('project_updates')
+        .from('project_notes')
         .insert({
-          project_id: update.project_id,
+          project_id: note.project_id,
           author_id: user.id,
-          note: update.note || null,
-          status_change: update.status_change || null,
-          progress_change: update.progress_change || null,
+          author_role: note.author_role,
+          visibility: note.visibility || 'internal',
+          body: note.body,
         })
         .select()
         .single();
 
       if (error) {
-        console.error('[useAddProjectUpdate] Error:', error);
+        console.error('[useAddProjectNote] Error:', error);
         throw error;
       }
-      return data as ProjectUpdate;
+      return data as ProjectNote;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['project-updates', data.project_id] });
+      queryClient.invalidateQueries({ queryKey: ['project-notes', data.project_id] });
       queryClient.invalidateQueries({ queryKey: ['project', data.project_id] });
     },
   });
@@ -1242,6 +1329,7 @@ export const useAssignEmployee = () => {
           project_id: projectId,
           employee_id: employeeId,
           role: role || 'assignee',
+          assigned_by: user?.id || null,
         })
         .select()
         .single();

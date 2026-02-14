@@ -6,12 +6,11 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useCreateProject, useProperties, useLandlordEmployees, useAssignEmployee } from '@/hooks/useData';
+import ErrorModal from '@/components/ErrorModal';
 
 const PRIORITY_OPTIONS = [
   { label: 'Low', value: 'low', color: '#34C759' },
@@ -34,10 +33,38 @@ export default function CreateProjectScreen() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+
+  const isValidDate = (value: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const date = new Date(value);
+    return !Number.isNaN(date.getTime());
+  };
+
+  const formatSupabaseError = (err: any) => {
+    if (!err) return 'Failed to create project.';
+    if (err.code === '42P17') return 'Database policy error: infinite recursion detected. Please contact support.';
+    const code = err.code ? ` (${err.code})` : '';
+    return `${err.message || 'Failed to create project'}${code}`;
+  };
 
   const handleCreate = async () => {
     if (!title.trim()) {
-      Alert.alert('Required', 'Please enter a project title');
+      setErrorMessage('Please enter a project title.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (dueDate && !isValidDate(dueDate)) {
+      setErrorMessage('Due date must be in YYYY-MM-DD format.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (budget && Number.isNaN(parseFloat(budget))) {
+      setErrorMessage('Budget must be a valid number.');
+      setShowErrorModal(true);
       return;
     }
 
@@ -63,12 +90,11 @@ export default function CreateProjectScreen() {
         }
       }
 
-      Alert.alert('Success', 'Project created successfully', [
-        { text: 'View Project', onPress: () => navigation.replace('ProjectDetail', { projectId: project.id }) },
-        { text: 'Done', onPress: () => navigation.goBack() },
-      ]);
+      navigation.replace('ProjectDetail', { projectId: project.id });
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to create project');
+      console.error('[CreateProjectScreen] Create failed:', err);
+      setErrorMessage(formatSupabaseError(err));
+      setShowErrorModal(true);
     }
   };
 
@@ -231,6 +257,13 @@ export default function CreateProjectScreen() {
       </View>
 
       <View style={{ height: 40 }} />
+
+      <ErrorModal
+        visible={showErrorModal}
+        title="Project not created"
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
+      />
     </ScrollView>
   );
 }
