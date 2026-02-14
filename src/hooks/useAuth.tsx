@@ -12,7 +12,13 @@ interface AuthContextType {
   roles: UserRole[];
   activeRole: UserRole | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, selectedRoles: UserRole[]) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    selectedRoles: UserRole[],
+    options?: { tenantJoinCode?: string; employeeLandlordId?: string }
+  ) => Promise<{ error: Error | null; stage?: string; details?: any; needsEmailConfirmation?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   switchRole: (role: UserRole) => void;
@@ -117,8 +123,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     email: string,
     password: string,
     fullName: string = '',
-    selectedRoles: UserRole[] = []
+    selectedRoles: UserRole[] = [],
+    options?: { tenantJoinCode?: string; employeeLandlordId?: string }
   ) => {
+    const logSupabaseError = (stage: string, err: any) => {
+      const details = {
+        status: err?.status,
+        name: err?.name,
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        hint: err?.hint,
+      };
+      console.error(`[signUp:${stage}]`, details);
+      return details;
+    };
+
+    const isValidUuid = (value: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -130,49 +153,108 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (error) {
-      return { error };
+      return { error, stage: 'auth.signUp', details: logSupabaseError('auth.signUp', error) };
     }
 
-    // Insert all selected roles after successful signup
-    if (data.user && Array.isArray(selectedRoles) && selectedRoles.length > 0) {
-      if (!roleTableAvailableRef.current) {
-        setRoles(selectedRoles);
-        setActiveRole(selectedRoles[0]);
-        AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRoles[0]);
-        return { error: null };
+    if (!data?.user) {
+      const missingUserError = new Error('Sign up failed: no user returned by Supabase.');
+      return { error: missingUserError, stage: 'auth.signUp' };
+    }
+
+    if (!data.session) {
+      return { error: null, needsEmailConfirmation: true };
+    }
+
+    const userId = data.user.id;
+
+    // Insert profile if table exists
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: userId,
+        full_name: fullName || '',
+        email,
+      })
+      .select()
+      .single();
+
+    if (profileError) {
+      const errorCode = (profileError as { code?: string }).code;
+      if (errorCode !== 'PGRST204' && errorCode !== 'PGRST205' && !profileError.message?.includes('404')) {
+        return { error: profileError, stage: 'profiles.insert', details: logSupabaseError('profiles.insert', profileError) };
       }
-      const roleInserts = selectedRoles.map(role => ({
-        user_id: data.user!.id,
-        role: role
-      }));
+      console.warn('profiles table not found, skipping profile insert');
+    }
 
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert(roleInserts);
-
-      if (roleError) {
-        const errorCode = (roleError as { code?: string }).code;
-        // Handle missing table gracefully
-        if (errorCode === 'PGRST204' || errorCode === 'PGRST205' || (roleError.message && roleError.message.includes('404'))) {
-          console.warn('user_roles table not found, storing roles locally only');
-          roleTableAvailableRef.current = false;
-          setRoles(selectedRoles);
-          setActiveRole(selectedRoles[0]);
-          AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRoles[0]);
-          return { error: null };
-        }
-        // For real errors, show detailed message
-        console.error('Error setting user roles:', roleError);
-        Alert.alert(
-          'Role Setup Error',
-          'Unable to save your role to the database.\n\nError: ' + (roleError.message || 'Unknown error') +
-          '\n\nPlease contact support if this continues.'
-        );
-        return { error: roleError };
+    const selectedRole = selectedRoles[0];
+    if (selectedRole) {
+      if (!roleTableAvailableRef.current) {
+        setRoles([selectedRole]);
+        setActiveRole(selectedRole);
+        AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRole);
       } else {
-        setRoles(selectedRoles);
-        setActiveRole(selectedRoles[0]);
-        AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRoles[0]);
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role: selectedRole })
+          .select()
+          .single();
+
+        if (roleError) {
+          const errorCode = (roleError as { code?: string }).code;
+          if (errorCode === 'PGRST204' || errorCode === 'PGRST205' || roleError.message?.includes('404')) {
+            roleTableAvailableRef.current = false;
+            setRoles([selectedRole]);
+            setActiveRole(selectedRole);
+            AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRole);
+          } else {
+            return { error: roleError, stage: 'user_roles.insert', details: logSupabaseError('user_roles.insert', roleError) };
+          }
+        } else {
+          setRoles([selectedRole]);
+          setActiveRole(selectedRole);
+          AsyncStorage.setItem(ACTIVE_ROLE_KEY, selectedRole);
+        }
+      }
+
+      if (selectedRole === 'tenant') {
+        if (!options?.tenantJoinCode) {
+          return { error: new Error('Tenant registration requires a unit join code.'), stage: 'tenants.join' };
+        }
+
+        const { data: joinData, error: joinError } = await supabase
+          .rpc('join_unit_by_code', { p_code: options.tenantJoinCode });
+
+        if (joinError) {
+          return { error: joinError, stage: 'tenants.join', details: logSupabaseError('tenants.join', joinError) };
+        }
+        if (!joinData?.success) {
+          return { error: new Error(joinData?.error || 'Failed to join unit.'), stage: 'tenants.join' };
+        }
+      }
+
+      if (selectedRole === 'employee') {
+          if (!options?.employeeLandlordId) {
+            return { error: new Error('Employee registration requires a landlord ID.'), stage: 'employees.insert' };
+          }
+          if (!isValidUuid(options.employeeLandlordId)) {
+            return { error: new Error('Invalid landlord ID format.'), stage: 'employees.insert' };
+          }
+
+        const { error: employeeError } = await supabase
+          .from('employees')
+          .insert({
+            user_id: userId,
+            landlord_id: options.employeeLandlordId,
+            full_name: fullName || '',
+            email: email || null,
+            status: 'active',
+          })
+          .select()
+          .single();
+
+        if (employeeError) {
+          return { error: employeeError, stage: 'employees.insert', details: logSupabaseError('employees.insert', employeeError) };
+        }
       }
     }
 
