@@ -121,19 +121,16 @@ export default function JoinPropertyScreen() {
         return;
       }
 
-      // CRITICAL: Refresh membership state and WAIT for it to complete
-      // This ensures the dashboard shows updated data when we navigate back
+      // Refresh membership state and wait for it to complete.
+      // The dashboard uses useFocusEffect as a safety net, but we also
+      // eagerly refresh here so the cache is warm before we navigate back.
       console.log('[JoinProperty] Join successful, refreshing membership...');
       await refreshMembership();
       console.log('[JoinProperty] Membership refreshed');
 
-      // Also invalidate other related queries
+      // Also invalidate landlord-side queries
       queryClient.invalidateQueries({ queryKey: ['units'] });
       queryClient.invalidateQueries({ queryKey: ['properties'] });
-      if (result.property_id) {
-        queryClient.invalidateQueries({ queryKey: ['units', result.property_id] });
-        queryClient.invalidateQueries({ queryKey: ['property', result.property_id] });
-      }
 
       Alert.alert(
         'Success',

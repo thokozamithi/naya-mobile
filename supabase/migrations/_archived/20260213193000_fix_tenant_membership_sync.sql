@@ -12,17 +12,22 @@ create policy "tenants_select_own"
   on public.tenants for select
   using (auth.uid() = user_id);
 
--- STEP 2: Ensure landlords can read tenants of their properties
+-- STEP 2: Landlords can read tenants of their properties.
+-- Uses a SECURITY DEFINER helper to avoid infinite recursion:
+--   properties -> (policy queries) tenants -> (policy queries) properties -> loop
+-- The helper bypasses RLS on `properties` to break the cycle.
+create or replace function public.is_property_owner(p_property_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.properties
+    where id = p_property_id and user_id = auth.uid()
+  );
+$$ language sql security definer stable;
+
 drop policy if exists "tenants_select_landlord" on public.tenants;
 create policy "tenants_select_landlord"
   on public.tenants for select
-  using (
-    exists (
-      select 1 from public.properties p
-      where p.id = tenants.property_id
-        and p.user_id = auth.uid()
-    )
-  );
+  using (public.is_property_owner(property_id));
 
 -- STEP 3: Ensure tenants can read their property
 drop policy if exists "properties_select_tenant" on public.properties;
@@ -54,6 +59,7 @@ create policy "units_select_tenant"
 grant select on public.tenants to authenticated;
 grant select on public.properties to authenticated;
 grant select on public.units to authenticated;
+grant execute on function public.is_property_owner(uuid) to authenticated;
 
 -- STEP 6: Reload PostgREST schema cache
 notify pgrst, 'reload schema';
@@ -61,6 +67,7 @@ notify pgrst, 'reload schema';
 do $$ begin
   raise notice '=============================================';
   raise notice 'FIX APPLIED: tenants_select_own policy created';
-  raise notice 'Tenants can now SELECT their own membership records';
+  raise notice 'FIX APPLIED: tenants_select_landlord uses SECURITY DEFINER helper';
+  raise notice 'No more infinite recursion on properties table';
   raise notice '=============================================';
 end $$;

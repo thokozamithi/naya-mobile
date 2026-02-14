@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert, Modal } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { DashboardHeader } from '@/components/DashboardHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -37,6 +38,13 @@ const TenantDashboard = ({ navigation }: any) => {
   const { data: lease, isLoading: leaseLoading } = useTenantLease();
   const leaveUnit = useLeaveUnit();
   const [refreshing, setRefreshing] = useState(false);
+
+  // Refetch membership every time this screen gains focus (e.g., after JoinProperty)
+  useFocusEffect(
+    useCallback(() => {
+      refreshMembership();
+    }, [refreshMembership])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
