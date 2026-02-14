@@ -376,7 +376,7 @@ export const useEmployeeProjects = () => {
       }
       if (!empRecord || empRecord.length === 0) return [];
 
-      const employeeIds = empRecord.map(e => e.id);
+      const employeeIds = empRecord.map((e: any) => e.id);
 
       // Get assignments for this employee
       const { data: assignments, error: assError } = await supabase
@@ -387,7 +387,7 @@ export const useEmployeeProjects = () => {
       if (assError) throw assError;
       if (!assignments || assignments.length === 0) return [];
 
-      const projectIds = [...new Set(assignments.map(a => a.project_id))];
+      const projectIds = [...new Set(assignments.map((a: any) => a.project_id))];
 
       // Get the actual projects
       const { data, error } = await supabase
@@ -485,7 +485,7 @@ export const useMaintenanceRequests = (userId: string | undefined) => {
       if (propError) throw propError;
       if (!properties || properties.length === 0) return [];
       
-      const propertyIds = properties.map(p => p.id);
+      const propertyIds = properties.map((p: any) => p.id);
       
       // Then get all maintenance requests for those properties
       const { data, error } = await supabase
@@ -564,7 +564,7 @@ export const useLandlordMessages = () => {
       }
       if (!properties || properties.length === 0) return [];
       
-      const propertyIds = properties.map(p => p.id);
+      const propertyIds = properties.map((p: any) => p.id);
       
       // Get all messages for those properties, with related data
       const { data, error } = await supabase
@@ -618,8 +618,8 @@ export const useLandlordConversations = () => {
       if (propError) throw propError;
       if (!properties || properties.length === 0) return [];
       
-      const propertyIds = properties.map(p => p.id);
-      const propertyMap = new Map(properties.map(p => [p.id, p.name]));
+      const propertyIds = properties.map((p: any) => p.id);
+      const propertyMap = new Map<string, string>(properties.map((p: any) => [p.id, p.name]));
       
       // Get all messages for those properties
       const { data: messages, error } = await supabase
@@ -646,7 +646,7 @@ export const useLandlordConversations = () => {
           conversationMap.set(key, {
             id: key,
             propertyId: msg.property_id,
-            propertyName: propertyMap.get(msg.property_id) || 'Unknown Property',
+            propertyName: (propertyMap.get(msg.property_id) || 'Unknown Property') as string,
             unitId: msg.unit_id,
             unitName: msg.unit?.unit_name || null,
             tenantId,
@@ -1227,7 +1227,7 @@ export const useThreads = () => {
       if (partError) throw partError;
       if (!participantData || participantData.length === 0) return [];
 
-      const threadIds = participantData.map(p => p.thread_id);
+      const threadIds = participantData.map((p: any) => p.thread_id);
 
       // Get threads with last message
       const { data: threads, error } = await supabase
@@ -1240,7 +1240,7 @@ export const useThreads = () => {
 
       // Get latest message for each thread
       const threadsWithLastMessage = await Promise.all(
-        (threads || []).map(async (thread) => {
+        (threads || []).map(async (thread: any) => {
           const { data: msgs } = await supabase
             .from('thread_messages')
             .select('*')

@@ -133,7 +133,7 @@ const EmployeeDashboard = ({ navigation }: any) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Messaging')}>
+            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ThreadMessaging')}>
               <Text style={styles.actionIcon}>💬</Text>
               <Text style={styles.actionLabel}>Messages</Text>
             </TouchableOpacity>

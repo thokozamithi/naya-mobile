@@ -27,6 +27,7 @@ import ProjectDetailScreen from '@/screens/project/ProjectDetailScreen';
 import CreateProjectScreen from '@/screens/project/CreateProjectScreen';
 import AddEmployeeScreen from '@/screens/project/AddEmployeeScreen';
 import MessagingScreen from '@/screens/messaging/MessagingScreen';
+import ThreadMessagingScreen from '@/screens/messaging/ThreadMessagingScreen';
 import CreateMaintenanceRequestScreen from '@/screens/maintenance/CreateMaintenanceRequestScreen';
 import MaintenanceRequestDetailScreen from '@/screens/maintenance/MaintenanceRequestDetailScreen';
 import SpecialistDirectoryScreen from '@/screens/specialists/SpecialistDirectoryScreen';
@@ -108,6 +109,7 @@ const TenantTabs = () => (
     <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ headerShown: true }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
+    <Stack.Screen name="ThreadMessaging" component={ThreadMessagingScreen} options={{ headerShown: false }} />
     <Stack.Screen name="CreateMaintenanceRequest" component={CreateMaintenanceRequestScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="MaintenanceRequestDetail" component={MaintenanceRequestDetailScreen} options={{ headerShown: true, title: 'Maintenance Request' }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
@@ -165,6 +167,7 @@ const LandlordTabs = () => (
     <Stack.Screen name="EditProperty" component={EditPropertyScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="EditUnit" component={EditUnitScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
+    <Stack.Screen name="ThreadMessaging" component={ThreadMessagingScreen} options={{ headerShown: false }} />
     <Stack.Screen name="CreateMaintenanceRequest" component={CreateMaintenanceRequestScreen} options={{ headerShown: false, presentation: 'modal' }} />
     <Stack.Screen name="MaintenanceRequestDetail" component={MaintenanceRequestDetailScreen} options={{ headerShown: true, title: 'Maintenance Request' }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
@@ -172,6 +175,9 @@ const LandlordTabs = () => (
     <Stack.Screen name="SpecialistProfile" component={SpecialistProfileScreen} options={{ headerShown: true, title: 'Specialist' }} />
     <Stack.Screen name="SpecialistRegistration" component={SpecialistRegistrationScreen} options={{ headerShown: true, title: 'Register as Specialist' }} />
     <Stack.Screen name="Upgrade" component={UpgradeScreen} options={{ headerShown: true, title: 'Upgrade' }} />
+    <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} options={{ headerShown: true }} />
+    <Stack.Screen name="CreateProject" component={CreateProjectScreen} options={{ headerShown: false, presentation: 'modal' }} />
+    <Stack.Screen name="AddEmployee" component={AddEmployeeScreen} options={{ headerShown: false, presentation: 'modal' }} />
   </Stack.Navigator>
 );
 
@@ -211,6 +217,7 @@ const BuilderTabs = () => (
     <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} options={{ headerShown: true }} />
     <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ headerShown: true }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
+    <Stack.Screen name="ThreadMessaging" component={ThreadMessagingScreen} options={{ headerShown: false }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
     <Stack.Screen name="SpecialistDirectory" component={SpecialistDirectoryScreen} options={{ headerShown: true }} />
     <Stack.Screen name="SpecialistProfile" component={SpecialistProfileScreen} options={{ headerShown: true, title: 'Specialist' }} />
@@ -253,6 +260,7 @@ const SpecialistTabs = () => (
     <Stack.Screen name="SpecialistTabsStack" component={SpecialistTabsNavigator} />
     <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: true, title: 'Select Role' }} />
     <Stack.Screen name="Messaging" component={MessagingScreen} options={{ headerShown: true }} />
+    <Stack.Screen name="ThreadMessaging" component={ThreadMessagingScreen} options={{ headerShown: false }} />
     <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ headerShown: true }} />
     <Stack.Screen name="SpecialistDirectory" component={SpecialistDirectoryScreen} options={{ headerShown: true }} />
     <Stack.Screen name="SpecialistProfile" component={SpecialistProfileScreen} options={{ headerShown: true, title: 'Specialist' }} />

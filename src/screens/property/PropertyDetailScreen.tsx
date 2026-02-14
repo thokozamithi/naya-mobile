@@ -324,7 +324,7 @@ export default function PropertyDetailScreen() {
                 Select a unit to generate its QR code for tenants to scan and join:
               </Text>
               <ScrollView style={{ maxHeight: 300, width: '100%' }}>
-                {units.map((unit: any) => (
+                {(units || []).map((unit: any) => (
                   <TouchableOpacity
                     key={unit.id}
                     style={styles.unitSelectItem}

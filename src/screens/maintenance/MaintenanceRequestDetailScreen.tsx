@@ -11,7 +11,7 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
 import { useUpdateMaintenanceRequest, useEmployees } from '@/hooks/useData';
-import { MaintenanceRequest } from '@/types';
+import { MaintenanceRequest } from '@/hooks/useData';
 
 const STATUSES = [
   { value: 'pending', label: 'Pending', color: '#8E8E93' },
@@ -89,7 +89,7 @@ export default function MaintenanceRequestDetailScreen() {
       setIsUpdating(true);
       await updateRequest.mutateAsync({
         id: request.id,
-        assigned_to: employeeId,
+        assigned_employee_id: employeeId,
       });
 
       const employee = employees.find((e: any) => e.id === employeeId);
@@ -242,21 +242,21 @@ export default function MaintenanceRequestDetailScreen() {
 
         <View style={styles.section}>
           <Text style={styles.label}>Reported By</Text>
-          <Text style={styles.value}>User ID: {request.reported_by}</Text>
+          <Text style={styles.value}>User ID: {request.tenant_id}</Text>
         </View>
 
-        {request.assigned_to && (
+        {request.assigned_employee_id && (
           <View style={styles.section}>
             <Text style={styles.label}>Assigned To</Text>
             <Text style={styles.value}>
-              {employees.find((e: any) => e.id === request.assigned_to)?.full_name ||
-                employees.find((e: any) => e.id === request.assigned_to)?.email ||
-                `Employee ID: ${request.assigned_to}`}
+              {employees.find((e: any) => e.id === request.assigned_employee_id)?.full_name ||
+                employees.find((e: any) => e.id === request.assigned_employee_id)?.email ||
+                `Employee ID: ${request.assigned_employee_id}`}
             </Text>
           </View>
         )}
 
-        {!request.assigned_to && canUpdateStatus && (
+        {!request.assigned_employee_id && canUpdateStatus && (
           <View style={styles.section}>
             <Text style={styles.label}>Assigned To</Text>
             <Text style={[styles.value, { color: '#999', fontStyle: 'italic' }]}>
@@ -295,7 +295,7 @@ export default function MaintenanceRequestDetailScreen() {
                 <ActivityIndicator color="#007AFF" />
               ) : (
                 <Text style={styles.assignButtonText}>
-                  {request.assigned_to ? 'Reassign' : 'Assign'} Employee
+                  {request.assigned_employee_id ? 'Reassign' : 'Assign'} Employee
                 </Text>
               )}
             </TouchableOpacity>

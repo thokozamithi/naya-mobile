@@ -14,13 +14,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { useSpecialists } from '@/hooks/useData';
+import { useSpecialists, useCreateThread } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/services/supabase';
 
 interface Specialist {
   id: string;
-  user_id: string;
+  user_id: string | null;
   name: string;
   specialties: string[];
   bio: string | null;
@@ -37,13 +36,14 @@ interface Specialist {
 }
 
 const SpecialistDirectoryScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { data: specialists = [], isLoading, error } = useSpecialists();
   const [searchText, setSearchText] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
   const [messaging, setMessaging] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const createThread = useCreateThread();
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -80,28 +80,25 @@ const SpecialistDirectoryScreen = () => {
     });
   }, [specialists, searchText, selectedSpecialty]);
 
-  const handleContact = async (specialistId: string, specialistName: string) => {
+  const handleContact = async (specialistUserId: string | null, specialistName: string) => {
     if (!user?.id) {
       Alert.alert('Error', 'Please log in to contact specialists');
       return;
     }
+    if (!specialistUserId) {
+      Alert.alert('Unavailable', 'This specialist does not have messaging enabled yet.');
+      return;
+    }
 
     try {
-      setMessaging(specialistId);
-      // Create initial message
-      const { error } = await supabase.from('messages').insert([
-        {
-          sender_id: user.id,
-          recipient_id: specialistId,
-          content: `Hi ${specialistName}, I'm interested in your services.`,
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      setMessaging(specialistUserId);
+      const thread = await createThread.mutateAsync({
+        subject: `Specialist: ${specialistName}`,
+        participantIds: [specialistUserId],
+        initialMessage: `Hi ${specialistName}, I'm interested in your services.`,
+      });
 
-      if (error) throw error;
-
-      // Navigate to messaging screen
-      navigation.navigate('Messaging' as never);
+      navigation.navigate('ThreadMessaging', { threadId: thread.id });
     } catch (err) {
       Alert.alert('Error', 'Failed to initiate contact. Please try again.');
       console.error(err);
@@ -178,10 +175,10 @@ const SpecialistDirectoryScreen = () => {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.contactButton}
-          onPress={() => handleContact(specialist.id, specialist.name)}
-          disabled={messaging === specialist.id}
+          onPress={() => handleContact(specialist.user_id, specialist.name)}
+          disabled={messaging === specialist.user_id}
         >
-          {messaging === specialist.id ? (
+          {messaging === specialist.user_id ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.contactButtonText}>Contact</Text>

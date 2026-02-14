@@ -82,6 +82,7 @@ export default function AddUnitScreen() {
         property_id: propertyId,
         unit_name: unitName.trim(),
         unit_code: unitCode.trim(),
+        unit_join_code: `${unitCode.trim()}-${Date.now().toString(36)}`,
         status,
         bedrooms: bedrooms ? parseInt(bedrooms) : 1,
         bathrooms: bathrooms ? parseFloat(bathrooms) : 1.0,
@@ -382,7 +383,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  errorText: {
+  errorTextLarge: {
     fontSize: 16,
     color: '#FF3B30',
     textAlign: 'center',

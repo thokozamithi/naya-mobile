@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
+import { useCreateThread } from '@/hooks/useData';
 import { supabase } from '@/services/supabase';
 import { useQuery } from '@tanstack/react-query';
 
@@ -22,12 +23,13 @@ interface RouteParams {
 
 export default function SpecialistProfileScreen() {
   const route = useRoute();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { specialistId } = (route.params as RouteParams) || {};
 
   const [activeTab, setActiveTab] = useState<Tab>('skills');
   const [contacting, setContacting] = useState(false);
+  const createThread = useCreateThread();
 
   const { data: specialist, isLoading, error } = useQuery({
     queryKey: ['specialist', specialistId],
@@ -49,15 +51,21 @@ export default function SpecialistProfileScreen() {
 
   const handleMessage = async () => {
     if (!user?.id || !specialist) return;
+    if (!specialist.user_id) {
+      Alert.alert('Unavailable', 'This specialist does not have messaging enabled yet.');
+      return;
+    }
+
     setContacting(true);
     try {
-      await supabase.from('messages').insert({
-        sender_id: user.id,
-        receiver_id: specialist.user_id,
-        content: `Hi ${specialist.name}, I'd like to discuss working together.`,
+      const thread = await createThread.mutateAsync({
+        subject: `Specialist: ${specialist.name}`,
+        participantIds: [specialist.user_id],
+        initialMessage: `Hi ${specialist.name}, I'd like to discuss working together.`,
       });
-      navigation.navigate('Messaging' as never);
-    } catch {
+      navigation.navigate('ThreadMessaging', { threadId: thread.id });
+    } catch (err) {
+      console.error('Failed to start specialist thread:', err);
       Alert.alert('Error', 'Failed to start conversation.');
     } finally {
       setContacting(false);

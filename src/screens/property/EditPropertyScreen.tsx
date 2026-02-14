@@ -13,8 +13,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/hooks/useAuth';
-import { useUpdateProperty } from '@/hooks/useData';
-import { Property } from '@/types';
+import { useUpdateProperty, Property } from '@/hooks/useData';
 import SuccessModal from '@/components/SuccessModal';
 
 const PROPERTY_TYPES = [

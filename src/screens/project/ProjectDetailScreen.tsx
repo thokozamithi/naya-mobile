@@ -11,7 +11,7 @@ import {
   Modal,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { useProjectDetail, useProjectUpdates, useUpdateProject, useAddProjectUpdate } from '@/hooks/useData';
+import { useProjectDetail, useProjectUpdates, useUpdateProject, useAddProjectUpdate, useCreateThread } from '@/hooks/useData';
 import { useAuth } from '@/hooks/useAuth';
 import { formatDate, formatTime } from '@/lib/utils';
 
@@ -32,11 +32,13 @@ export default function ProjectDetailScreen() {
   const { data: updates = [] } = useProjectUpdates(projectId);
   const updateProjectMutation = useUpdateProject();
   const addUpdateMutation = useAddProjectUpdate();
+  const createThreadMutation = useCreateThread();
 
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const [isCreatingThread, setIsCreatingThread] = useState(false);
 
   if (!projectId) {
     return (
@@ -138,6 +140,48 @@ export default function ProjectDetailScreen() {
     : null;
 
   const canEdit = activeRole === 'landlord' || activeRole === 'employee' || activeRole === 'builder';
+  const canMessageTeam = activeRole === 'landlord' || activeRole === 'employee';
+
+  const handleMessageTeam = async () => {
+    if (!user?.id || !project) return;
+
+    try {
+      setIsCreatingThread(true);
+
+      if (activeRole === 'employee') {
+        const thread = await createThreadMutation.mutateAsync({
+          subject: `Project: ${project.title}`,
+          participantIds: [project.landlord_id],
+          projectId: project.id,
+          initialMessage: `Hi, I have an update about ${project.title}.`,
+        });
+        navigation.navigate('ThreadMessaging', { threadId: thread.id });
+        return;
+      }
+
+      const employeeUserIds = (project.assignments || [])
+        .map((a: any) => a.employee?.user_id)
+        .filter((id: string | null | undefined) => !!id) as string[];
+
+      if (employeeUserIds.length === 0) {
+        Alert.alert('No team members', 'Assign employees with app accounts to start a thread.');
+        return;
+      }
+
+      const thread = await createThreadMutation.mutateAsync({
+        subject: `Project: ${project.title}`,
+        participantIds: employeeUserIds,
+        projectId: project.id,
+        initialMessage: `Team, please share any updates on ${project.title}.`,
+      });
+      navigation.navigate('ThreadMessaging', { threadId: thread.id });
+    } catch (err: any) {
+      console.error('Failed to create thread:', err);
+      Alert.alert('Error', err.message || 'Failed to start a conversation');
+    } finally {
+      setIsCreatingThread(false);
+    }
+  };
 
   return (
     <>
@@ -272,6 +316,17 @@ export default function ProjectDetailScreen() {
               >
                 <Text style={styles.secondaryButtonText}>Add Note</Text>
               </TouchableOpacity>
+              {canMessageTeam && (
+                <TouchableOpacity
+                  style={[styles.secondaryButton, isCreatingThread && { opacity: 0.6 }]}
+                  onPress={handleMessageTeam}
+                  disabled={isCreatingThread}
+                >
+                  <Text style={styles.secondaryButtonText}>
+                    {activeRole === 'employee' ? 'Message Landlord' : 'Message Team'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
