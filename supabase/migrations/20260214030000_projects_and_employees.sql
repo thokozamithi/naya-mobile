@@ -286,29 +286,12 @@ create index if not exists message_threads_project_id_idx on public.message_thre
 -- RLS
 alter table public.message_threads enable row level security;
 
--- Only participants can see threads
-create policy "message_threads_select_participant" on public.message_threads
-  for select using (
-    exists (
-      select 1 from public.thread_participants tp
-      where tp.thread_id = message_threads.id
-        and tp.user_id = auth.uid()
-    )
-  );
-
 -- Authenticated users can create threads
 create policy "message_threads_insert" on public.message_threads
   for insert with check (true);
 
--- Participants can update thread (e.g. last_message_at)
-create policy "message_threads_update" on public.message_threads
-  for update using (
-    exists (
-      select 1 from public.thread_participants tp
-      where tp.thread_id = message_threads.id
-        and tp.user_id = auth.uid()
-    )
-  );
+-- NOTE: message_threads select/update policies that reference thread_participants
+-- are deferred until AFTER thread_participants table is created (see below)
 
 -- =============================================
 -- 7. THREAD PARTICIPANTS
@@ -350,6 +333,25 @@ create policy "thread_participants_insert" on public.thread_participants
 -- Users can update their own read status
 create policy "thread_participants_update_own" on public.thread_participants
   for update using (auth.uid() = user_id);
+
+-- NOW add deferred message_threads policies (thread_participants exists)
+create policy "message_threads_select_participant" on public.message_threads
+  for select using (
+    exists (
+      select 1 from public.thread_participants tp
+      where tp.thread_id = message_threads.id
+        and tp.user_id = auth.uid()
+    )
+  );
+
+create policy "message_threads_update" on public.message_threads
+  for update using (
+    exists (
+      select 1 from public.thread_participants tp
+      where tp.thread_id = message_threads.id
+        and tp.user_id = auth.uid()
+    )
+  );
 
 -- =============================================
 -- 8. THREAD MESSAGES
